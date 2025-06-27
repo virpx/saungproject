@@ -1,167 +1,151 @@
+<!-- resources/views/reservations/step-four.blade.php -->
 <x-guest-layout>
-    <div class="container w-full px-5 py-6 mx-auto">
-        <div class="flex items-center min-h-screen bg-gray-50">
-            <div class="flex-1 h-full max-w-4xl mx-auto bg-white rounded-lg shadow-xl">
-                <div class="flex flex-col md:flex-row">
-                    <div class="h-32 md:h-auto md:w-1/2">
-                        <img class="object-cover w-full h-full" src="{{ asset('images/Restaurant.jpeg') }}" alt="img" />
-                    </div>
-                    <div class="flex items-center justify-center p-6 sm:p-12 md:w-1/2">
-                        <div class="w-full">
-                            <h3 class="mb-4 text-xl font-bold text-blue-600">Payment</h3>
+    <div class="container mx-auto px-6 py-8">
+        <div class="flex items-center min-h-screen bg-gray-800">
+            <!-- Card Wrapper -->
+            <div
+                class="flex-1 max-w-4xl mx-auto bg-gray-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row">
+                <!-- Image Section -->
+                <div class="hidden md:block md:w-1/3">
+                    <img src="{{ asset('images/Restaurant.jpeg') }}" alt="img" class="object-cover w-full h-full" />
+                </div>
+                <!-- Content Section -->
+                <div class="w-full md:w-2/3 p-8 flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-2xl font-bold text-yellow-400 mb-6">Pembayaran</h3>
 
-                            <div class="w-full flex items-center justify-between mb-8">
-                                <div class="flex w-full">
-                                    <div class="flex flex-col items-center w-1/4">
-                                        <div class="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold {{ request()->routeIs('reservations.step-one') ? 'bg-blue-600' : 'bg-gray-300' }}">1
-                                        </div>
-                                        <span class="text-xs mt-2 {{ request()->routeIs('reservations.step-one') ? 'text-blue-600 font-bold' : 'text-gray-500' }}">Data Diri</span>
+                        <!-- Step Indicator -->
+                        <div class="flex items-center justify-between mb-8">
+                            @foreach ([1, 2, 3, 4] as $step)
+                                @php
+                                    $active = $step === 4;
+                                    $done = $step < 4;
+                                @endphp
+                                <div class="flex-1 flex flex-col items-center">
+                                    <div class="step {{ $active ? 'step-active' : '' }}">
+                                        {{ $step }}
                                     </div>
-                                    <div class="flex items-center w-1/4">
-                                        <div class="flex-1 h-1 {{ (request()->routeIs('reservations.step-two') || request()->routeIs('reservations.step-three') || request()->routeIs('reservations.step-four')) ? 'bg-blue-400' : 'bg-gray-300' }}"></div>
-                                    </div>
-                                    <div class="flex flex-col items-center w-1/4">
-                                        <div class="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold {{ request()->routeIs('reservations.step-two') ? 'bg-blue-600' : (request()->routeIs('reservations.step-one') ? 'bg-gray-300' : 'bg-blue-400') }}">2
-                                        </div>
-                                        <span class="text-xs mt-2 {{ request()->routeIs('reservations.step-two') ? 'text-blue-600 font-bold' : 'text-gray-500' }}">Meja/Menu</span>
-                                    </div>
-                                    <div class="flex items-center w-1/4">
-                                        <div class="flex-1 h-1 {{ (request()->routeIs('reservations.step-three') || request()->routeIs('reservations.step-four')) ? 'bg-blue-400' : 'bg-gray-300' }}"></div>
-                                    </div>
-                                    <div class="flex flex-col items-center w-1/4">
-                                        <div class="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold {{ request()->routeIs('reservations.step-three') ? 'bg-blue-600' : (request()->routeIs('reservations.step-four') ? 'bg-blue-400' : 'bg-gray-300') }}">3
-                                        </div>
-                                        <span class="text-xs mt-2 {{ request()->routeIs('reservations.step-three') ? 'text-blue-600 font-bold' : 'text-gray-500' }}">Menu</span>
-                                    </div>
-                                    <div class="flex items-center w-1/4">
-                                        <div class="flex-1 h-1 {{ request()->routeIs('reservations.step-four') ? 'bg-blue-400' : 'bg-gray-300' }}"></div>
-                                    </div>
-                                    <div class="flex flex-col items-center w-1/4">
-                                        <div class="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold {{ request()->routeIs('reservations.step-four') ? 'bg-blue-600' : 'bg-gray-300' }}">4
-                                        </div>
-                                        <span class="text-xs mt-2 {{ request()->routeIs('reservations.step-four') ? 'text-blue-600 font-bold' : 'text-gray-500' }}">Pembayaran</span>
-                                    </div>
+                                    <span
+                                        class="text-xs mt-2 {{ $active ? 'text-yellow-400 font-bold' : ($done ? 'text-green-500 font-bold' : 'text-gray-500') }}">
+                                        {{ ['Data Diri', 'Meja/Menu', 'Menu', 'Pembayaran'][$step - 1] }}
+                                    </span>
                                 </div>
+                                @if ($step < 4)
+                                    <div class="flex-1 h-1 mx-2 {{ $done ? 'bg-yellow-400' : 'bg-gray-700' }} rounded">
+                                    </div>
+                                @endif
+                            @endforeach
+                        </div>
+
+                        <form method="POST" action="{{ route('reservations.store.step-four') }}" class="space-y-6">
+                            @csrf
+
+                            <!-- Summary Card -->
+                            <div class="bg-gray-800 p-6 rounded-lg">
+                                <div class="flex justify-between mb-2">
+                                    <span class="text-gray-400">Subtotal</span>
+                                    <span class="text-gray-100 font-semibold">Rp
+                                        {{ number_format($totalCost, 0, ',', '.') }}</span>
+                                </div>
+                                <div class="flex justify-between mb-2">
+                                    <span class="text-gray-400">Pajak (10%)</span>
+                                    <span class="text-gray-100 font-semibold">Rp
+                                        {{ number_format($totalCost * 0.1, 0, ',', '.') }}</span>
+                                </div>
+                                @if (isset($overPeopleFee) && $overPeopleFee > 0)
+                                    <div class="flex justify-between">
+                                        <span class="text-gray-400">Biaya Tambahan Orang
+                                            ({{ $overPeopleCount }}×)</span>
+                                        <span class="text-orange-400 font-semibold">Rp
+                                            {{ number_format($overPeopleFee, 0, ',', '.') }}</span>
+                                    </div>
+                                @endif
                             </div>
 
-                            <form method="POST" action="{{ route('reservations.store.step-four') }}">
-                                @csrf
-                                <div class="sm:col-span-6 pt-5">
-                                    <label for="total_cost" class="block text-sm font-medium text-gray-700">Total Cost</label>
-                                    <div class="mt-1">
-                                        <input type="text" id="total_cost" name="total_cost" value="{{ $totalCost }}" readonly
-                                            class="block w-full appearance-none bg-white border border-gray-400 rounded-md py-2 px-3 text-base leading-normal transition duration-150 ease-in-out sm:text-sm sm:leading-5" />
-                                    </div>
-                                    <div class="mt-2 text-xs text-gray-500">* Belum termasuk pajak 10%</div>
-                                </div>
-                                <div class="sm:col-span-6 pt-2">
-                                    <label class="block text-sm font-medium text-gray-700">Pajak (10%)</label>
-                                    <div class="mt-1">
-                                        <input type="text" id="tax_value" name="tax_value" value="{{ number_format($totalCost * 0.10, 0, ',', '.') }}" readonly
-                                            class="block w-full appearance-none bg-white border border-gray-400 rounded-md py-2 px-3 text-base leading-normal transition duration-150 ease-in-out sm:text-sm sm:leading-5 bg-gray-50" />
-                                    </div>
-                                </div>
-                                @if(isset($overPeopleFee) && $overPeopleFee > 0)
-                                <div class="sm:col-span-6 pt-2">
-                                    <label class="block text-sm font-medium text-gray-700">Biaya Tambahan Orang ({{ $overPeopleCount }} x {{ number_format($overPeopleFeePerPerson,0,',','.') }})</label>
-                                    <div class="mt-1">
-                                        <input type="text" id="over_people_fee" name="over_people_fee" value="{{ number_format($overPeopleFee,0,',','.') }}" readonly
-                                            class="block w-full appearance-none bg-white border border-orange-400 rounded-md py-2 px-3 text-base leading-normal transition duration-150 ease-in-out sm:text-sm sm:leading-5 bg-orange-50 font-semibold text-orange-700" />
-                                    </div>
-                                </div>
-                                @endif
-                                <div class="sm:col-span-6 pt-5">
-                                    <label class="block font-semibold mb-2 text-lg">Pilih Metode Pembayaran</label>
-                                    <input type="hidden" id="selected_fee_flat" name="fee_flat" value="0">
-                                    <input type="hidden" id="selected_fee_percent" name="fee_percent" value="0">
-                                    <select name="payment_channel" id="payment_channel" class="w-full border rounded px-3 py-2" required>
-                                        <option value="">-- Pilih Channel Pembayaran --</option>
-                                        @if(isset($channelsPayment['success']) && $channelsPayment['success'] && isset($channelsPayment['data']))
-                                            @foreach($channelsPayment['data'] as $channel)
-                                                <option 
-                                                    value="{{ $channel['code'] }}"
-                                                    data-fee-flat="{{ $channel['total_fee']['flat'] }}"
-                                                    data-fee-percent="{{ $channel['total_fee']['percent'] }}"
-                                                >
-                                                    {{ $channel['name'] }} ({{ $channel['group'] }})
-                                                </option>
-                                            @endforeach
-                                        @endif
-                                    </select>
-                                    <div class="flex justify-between mt-2" id="feeBox" style="display:none;">
-                                        <span class="text-blue-700">Biaya Channel</span>
-                                        <span id="feeValue" class="text-blue-700">Rp 0</span>
-                                    </div>
-                                    <div class="flex justify-between mt-2 border-t pt-2 font-bold text-indigo-700" id="grandTotalBox" style="display:none;">
-                                        <span>Total Bayar</span>
-                                        <span id="grandTotal">Rp 0</span>
-                                    </div>
-                                </div>
+                            <!-- Payment Method -->
+                            <div class="bg-gray-800 p-6 rounded-lg">
+                                <label for="payment_channel" class="block text-gray-300 mb-2">Metode Pembayaran</label>
+                                <select id="payment_channel" name="payment_channel"
+                                    class="w-full bg-gray-700 text-gray-200 rounded-md p-3 focus:ring-yellow-400"
+                                    required>
+                                    <option value="">Pilih Channel</option>
+                                    @foreach ($channelsPayment['data'] ?? [] as $channel)
+                                        <option value="{{ $channel['code'] }}"
+                                            data-fee-flat="{{ $channel['total_fee']['flat'] }}"
+                                            data-fee-percent="{{ $channel['total_fee']['percent'] }}">
+                                            {{ $channel['name'] }} ({{ $channel['group'] }})
+                                        </option>
+                                    @endforeach
+                                </select>
 
-                                <div class="mt-6 p-4 flex justify-between">
-                                    <a href="{{ route('reservations.step-three') }}" class="px-4 py-2 bg-indigo-500 hover:bg-indigo-700 rounded-lg text-white">Previous</a>
-                                    <button type="submit" class="px-4 py-2 bg-indigo-500 hover:bg-indigo-700 rounded-lg text-white">complete</button>
-                                </div>
-                            </form>
-                        </div>
+                                <div id="feeBox" class="hidden mt-4 flex justify-between text-yellow-400"></div>
+                                <div id="grandTotalBox"
+                                    class="hidden mt-2 flex justify-between font-bold text-gray-100"></div>
+                            </div>
+
+                            <!-- Navigation -->
+                            <div class="flex justify-between">
+                                <a href="{{ route('reservations.step-three') }}"
+                                    class="px-6 py-3 bg-gray-700 text-gray-200 rounded-lg hover:bg-gray-600 font-semibold">Previous</a>
+                                <button type="submit"
+                                    class="px-6 py-3 bg-yellow-400 text-gray-900 rounded-lg hover:bg-yellow-500 font-semibold">Complete</button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-</x-guest-layout>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const select = document.getElementById('payment_channel');
-        const feeBox = document.getElementById('feeBox');
-        const feeValue = document.getElementById('feeValue');
-        const grandTotalBox = document.getElementById('grandTotalBox');
-        const grandTotal = document.getElementById('grandTotal');
-        const totalCost = {{ $totalCost }};
-        const tax = totalCost * 0.10;
-        const overPeopleFee = {{ isset($overPeopleFee) ? $overPeopleFee : 0 }};
-        const selectedFeeFlat = document.getElementById('selected_fee_flat');
-        const selectedFeePercent = document.getElementById('selected_fee_percent');
-        select.addEventListener('change', function() {
-            const selectedOption = select.options[select.selectedIndex];
-            const feeFlat = parseFloat(selectedOption.getAttribute('data-fee-flat') || 0);
-            const feePercent = parseFloat(selectedOption.getAttribute('data-fee-percent') || 0);
-            let fee = feeFlat + ((totalCost + tax + overPeopleFee) * feePercent / 100);
-            // Pembulatan fee jika channel DANA, QRIS, ShopeePay, OVO dan fee < 1000
-            const channelText = selectedOption.textContent.toLowerCase();
-            let pembulatan = false;
-            if ((channelText.includes('dana') || channelText.includes('qris') || channelText.includes('shopeepay') || channelText.includes('ovo')) && fee > 0 && fee < 1000) {
-                fee = 1000;
-                pembulatan = true;
-            }
-            if (select.value) {
-                feeBox.style.display = 'flex';
-                feeValue.textContent = 'Rp ' + Math.round(fee).toLocaleString('id-ID');
-                grandTotalBox.style.display = 'flex';
-                grandTotal.textContent = 'Rp ' + Math.round(totalCost + tax + overPeopleFee + fee).toLocaleString('id-ID');
-                // Tambahkan info pembulatan jika ada
-                let info = document.getElementById('feeRoundingInfo');
-                if (!info) {
-                    info = document.createElement('div');
-                    info.id = 'feeRoundingInfo';
-                    info.className = 'text-xs text-orange-600 mt-1';
-                    feeBox.parentNode.insertBefore(info, feeBox.nextSibling);
-                }
-                if (pembulatan) {
-                    info.textContent = 'Biaya channel dibulatkan ke Rp 1.000 sesuai ketentuan payment gateway yang dipakai.';
-                    info.style.display = 'block';
-                } else {
-                    info.style.display = 'none';
-                }
-            } else {
-                feeBox.style.display = 'none';
-                grandTotalBox.style.display = 'none';
-                let info = document.getElementById('feeRoundingInfo');
-                if (info) info.style.display = 'none';
-            }
-            selectedFeeFlat.value = feeFlat;
-            selectedFeePercent.value = feePercent;
+    <style>
+        .step {
+            width: 2rem;
+            height: 2rem;
+            border-radius: 9999px;
+            background: #374151;
+            color: #9ca3af;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+
+        .step-active {
+            background: #fbbf24;
+            color: #111;
+        }
+
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const select = document.getElementById('payment_channel');
+            const feeBox = document.getElementById('feeBox');
+            const grandBox = document.getElementById('grandTotalBox');
+            const total = {{ $totalCost }};
+            const tax = total * 0.1;
+            const over = {{ $overPeopleFee ?? 0 }};
+            select.addEventListener('change', function() {
+                const opt = select.options[select.selectedIndex];
+                const flat = +opt.dataset.feeFlat || 0;
+                const pct = +opt.dataset.feePercent || 0;
+                let fee = flat + ((total + tax + over) * pct / 100);
+                if (fee > 0 && fee < 1000 && /dana|qris|ovo|shopeepay/.test(opt.text.toLowerCase())) fee =
+                    1000;
+                feeBox.textContent = 'Biaya Channel: Rp ' + Math.round(fee).toLocaleString('id-ID');
+                grandBox.textContent = 'Total Bayar: Rp ' + Math.round(total + tax + over + fee)
+                    .toLocaleString('id-ID');
+                feeBox.classList.remove('hidden');
+                grandBox.classList.remove('hidden');
+            });
         });
-    });
-</script>
+    </script>
+</x-guest-layout>

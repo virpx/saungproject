@@ -98,44 +98,44 @@ class ReservationController extends Controller
         // Ambil query untuk filter dan pencarian
         $menusQuery = Menu::query();
         // $menus = Menu::all();
-        
+
         // Pencarian berdasarkan keyword
-    if ($request->has('search') && $request->search != '') {
-        $menusQuery->where('name', 'like', '%' . $request->search . '%');
-    }
+        if ($request->has('search') && $request->search != '') {
+            $menusQuery->where('name', 'like', '%' . $request->search . '%');
+        }
 
-    // Filter berdasarkan kategori
-    if ($request->has('category') && !empty($request->category)) {
-        $menusQuery->whereIn('category_id', $request->category);
-    }
+        // Filter berdasarkan kategori
+        if ($request->has('category') && !empty($request->category)) {
+            $menusQuery->whereIn('category_id', $request->category);
+        }
 
-    // Ambil hasil menu yang sudah difilter dan dicari
-    $menus = $menusQuery->get();
+        // Ambil hasil menu yang sudah difilter dan dicari
+        $menus = $menusQuery->get();
 
         return view('reservations.step-three', compact('menus', 'reservation', 'categories'));
     }
 
     public function storeStepThree(Request $request)
-{
-    //$categories = Category::with('menus')->get();
+    {
+        //$categories = Category::with('menus')->get();
 
-    $validated = $request->validate([
+        $validated = $request->validate([
             'menu_items' => ['required', 'array'],
             'menu_items.*' => ['exists:menus,id'],
             'quantities' => ['required', 'array'],
             'quantities.*' => ['integer', 'min:1'],
         ]);
 
-    $reservation = $request->session()->get('reservation');
+        $reservation = $request->session()->get('reservation');
 
-    // $menuItems = $validated['menu_items'];
-    // $quantities = $validated['quantities'];
+        // $menuItems = $validated['menu_items'];
+        // $quantities = $validated['quantities'];
 
-    // Initialize menu_items as an empty array
-    $menuItemsWithQuantity = [];
+        // Initialize menu_items as an empty array
+        $menuItemsWithQuantity = [];
 
-    // Populate the array with menu_id and quantity
-    foreach ($validated['menu_items'] as $menuId) {
+        // Populate the array with menu_id and quantity
+        foreach ($validated['menu_items'] as $menuId) {
             $qty = $validated['quantities'][$menuId] ?? 1;
             $menuItemsWithQuantity[] = [
                 'menu_id' => (int)$menuId,
@@ -143,16 +143,16 @@ class ReservationController extends Controller
             ];
         }
 
-    // Store the selected menu items with quantities in session
-    $reservation->menu_items = json_encode($menuItemsWithQuantity); // Encode as JSON
-    $request->session()->put('reservation', $reservation);
+        // Store the selected menu items with quantities in session
+        $reservation->menu_items = json_encode($menuItemsWithQuantity); // Encode as JSON
+        $request->session()->put('reservation', $reservation);
 
-    return to_route('reservations.step-four');
-}
+        return to_route('reservations.step-four');
+    }
 
 
-        // Step 4: Pembayaran
-        public function stepFour(Request $request)
+    // Step 4: Pembayaran
+    public function stepFour(Request $request)
     {
         $reservation = $request->session()->get('reservation');
 
@@ -177,9 +177,9 @@ class ReservationController extends Controller
             // Mengambil ID menu dan menghitung harga total
             // $menuIds = array_column($menuItems, 'menu_id'); // Ambil ID menu dari array
             // $totalCost = Menu::whereIn('id', $menuIds)->sum('price');
-            
+
             // Menghitung total berdasarkan jumlah pesanan
-                foreach ($menuItems as $item) {
+            foreach ($menuItems as $item) {
                 $menu = Menu::find($item['menu_id']);
                 if ($menu) {
                     $totalCost += $menu->price * $item['quantity'];
@@ -204,297 +204,175 @@ class ReservationController extends Controller
     }
 
     public function storeStepFour(Request $request)
-{
-    Log::info('Mulai proses storeStepFour reservasi', ['input' => $request->all()]);
-    $reservation = $request->session()->get('reservation');
+    {
+        Log::info('Mulai proses storeStepFour reservasi', ['input' => $request->all()]);
+        $reservation = $request->session()->get('reservation');
 
-    if (!$reservation) {
-        return redirect()->route('reservations.step-one')->with('error', 'Please complete the reservation form first.');
-    }
-
-    // Simpan ke database
-    $reservationModel = new Reservation();
-    $reservationModel->fill((array) $reservation);
-    $reservationModel->status = 'pending';
-    $reservationModel->first_name = $reservation->first_name;
-    $reservationModel->last_name = $reservation->last_name;
-    $reservationModel->email = $reservation->email;
-    $reservationModel->tel_number = $reservation->tel_number;
-    $reservationModel->res_date = $reservation->res_date;
-    $reservationModel->table_id = $reservation->table_id;
-    $reservationModel->guest_number = $reservation->guest_number;
-    $reservationModel->save();
-
-    Log::info('Reservasi berhasil disimpan', ['reservation_id' => $reservationModel->id]);
-
-    $order = null;
-    $paymentTransaction = null;
-    $checkoutUrl = null;
-    $paymentInstructions = null;
-    $menuNames = [];
-
-    // Hitung over-people fee
-    $overPeopleFee = 0;
-    $overPeopleCount = 0;
-    $overPeopleFeePerPerson = 10000;
-    if ($reservation->guest_number > 10) {
-        $overPeopleCount = $reservation->guest_number - 10;
-        $overPeopleFee = $overPeopleCount * $overPeopleFeePerPerson;
-    }
-
-    if (!empty($reservation->menu_items)) {
-        // Decode JSON menu_items yang berisi array objek {menu_id, quantity}
-        $menuItemsArr = json_decode($reservation->menu_items, true);
-
-        // Ambil semua menu ID yang dipesan
-        $menuIds = array_column($menuItemsArr, 'menu_id');
-
-        // Ambil data menu lengkap dari DB
-        $menus = \App\Models\Menu::whereIn('id', $menuIds)->get();
-
-        // Hitung total harga sesuai quantity + biaya tambahan over people fee
-        $total_price = 0;
-        foreach ($menuItemsArr as $item) {
-            $menu = $menus->where('id', $item['menu_id'])->first();
-            if ($menu) {
-                $total_price += $menu->price * $item['quantity'];
-            }
+        if (!$reservation) {
+            return redirect()->route('reservations.step-one')->with('error', 'Please complete the reservation form first.');
         }
-        $total_price += $overPeopleFee;
 
-        // Hitung jumlah total dengan pajak
-        $amount = $total_price + $this->calculateTax($total_price);
+        // Simpan ke database
+        $reservationModel = new Reservation();
+        $reservationModel->fill((array) $reservation);
+        $reservationModel->status = 'pending';
+        $reservationModel->first_name = $reservation->first_name;
+        $reservationModel->last_name = $reservation->last_name;
+        $reservationModel->email = $reservation->email;
+        $reservationModel->tel_number = $reservation->tel_number;
+        $reservationModel->res_date = $reservation->res_date;
+        $reservationModel->table_id = $reservation->table_id;
+        $reservationModel->guest_number = $reservation->guest_number;
+        $reservationModel->save();
 
-        // Simpan order
-        $order = new Order();
-        $order->reservation_id = $reservationModel->id;
-        $order->menu_items = $reservation->menu_items; // sudah json string
-        $order->total_price = $total_price;
-        $order->amount = $amount;
-        $order->customer_name = $reservation->first_name . ' ' . $reservation->last_name;
-        $order->phone = $reservation->tel_number;
-        $order->email = $reservation->email;
-        $order->table_id = $reservation->table_id;
-        $order->note = null;
-        $order->tax = $this->calculateTax($total_price);
-        $order->payment_status = 'pending';
-        $order->qris_screenshot = null;
-        $order->save();
+        Log::info('Reservasi berhasil disimpan', ['reservation_id' => $reservationModel->id]);
 
-        Log::info('Order berhasil dibuat', ['order_id' => $order->id]);
+        $order = null;
+        $paymentTransaction = null;
+        $checkoutUrl = null;
+        $paymentInstructions = null;
+        $menuNames = [];
 
-        // Persiapkan payload menu untuk Tripay dengan quantity yang benar
-        $menuItemsPayload = [];
-        foreach ($menuItemsArr as $item) {
-            $menu = $menus->where('id', $item['menu_id'])->first();
-            if ($menu) {
+        // Hitung over-people fee
+        $overPeopleFee = 0;
+        $overPeopleCount = 0;
+        $overPeopleFeePerPerson = 10000;
+        if ($reservation->guest_number > 10) {
+            $overPeopleCount = $reservation->guest_number - 10;
+            $overPeopleFee = $overPeopleCount * $overPeopleFeePerPerson;
+        }
+
+        if (!empty($reservation->menu_items)) {
+            // Decode JSON menu_items yang berisi array objek {menu_id, quantity}
+            $menuItemsArr = json_decode($reservation->menu_items, true);
+
+            // Ambil semua menu ID yang dipesan
+            $menuIds = array_column($menuItemsArr, 'menu_id');
+
+            // Ambil data menu lengkap dari DB
+            $menus = \App\Models\Menu::whereIn('id', $menuIds)->get();
+
+            // Hitung total harga sesuai quantity + biaya tambahan over people fee
+            $total_price = 0;
+            foreach ($menuItemsArr as $item) {
+                $menu = $menus->where('id', $item['menu_id'])->first();
+                if ($menu) {
+                    $total_price += $menu->price * $item['quantity'];
+                }
+            }
+            $total_price += $overPeopleFee;
+
+            $amount = $total_price + $this->calculateTax($total_price);
+            // dd($amount);
+
+            // Simpan order
+            $order = new Order();
+            $order->reservation_id = $reservationModel->id;
+            $order->menu_items = $reservation->menu_items; // sudah json string
+            $order->total_price = $total_price;
+            $order->amount = $amount;
+            $order->customer_name = $reservation->first_name . ' ' . $reservation->last_name;
+            $order->phone = $reservation->tel_number;
+            $order->email = $reservation->email;
+            $order->table_id = $reservation->table_id;
+            $order->note = null;
+            $order->tax = $this->calculateTax($total_price);
+            $order->payment_status = 'pending';
+            $order->qris_screenshot = null;
+            $order->save();
+
+            Log::info('Order berhasil dibuat', ['order_id' => $order->id]);
+
+            // Persiapkan payload menu untuk Tripay dengan quantity yang benar
+            $menuItemsPayload = [];
+            foreach ($menuItemsArr as $item) {
+                $menu = $menus->where('id', $item['menu_id'])->first();
+                if ($menu) {
+                    $menuItemsPayload[] = [
+                        'menu_id' => $menu->id,
+                        'sku' => $menu->sku,
+                        'name' => $menu->name,
+                        'price' => $menu->price,
+                        'quantity' => $item['quantity'],
+                    ];
+                }
+            }
+
+            // Tambahkan biaya over-people jika ada
+            if ($overPeopleFee > 0) {
                 $menuItemsPayload[] = [
-                    'menu_id' => $menu->id,
-                    'sku' => $menu->sku,
-                    'name' => $menu->name,
-                    'price' => $menu->price,
-                    'quantity' => $item['quantity'],
+                    'sku' => 'OVERPEOPLE',
+                    'name' => 'Biaya Tambahan Orang (' . $overPeopleCount . ' x Rp' . number_format((int) $overPeopleFeePerPerson, 0, ',', '.') . ')',
+                    'price' => $overPeopleFeePerPerson,
+                    'quantity' => $overPeopleCount,
                 ];
             }
-        }
 
-        // Tambahkan biaya over-people jika ada
-        if ($overPeopleFee > 0) {
-            $menuItemsPayload[] = [
-                'sku' => 'OVERPEOPLE',
-                'name' => 'Biaya Tambahan Orang (' . $overPeopleCount . ' x Rp' . number_format($overPeopleFeePerPerson, 0, ',', '.') . ')',
-                'price' => $overPeopleFeePerPerson,
-                'quantity' => $overPeopleCount,
+            $tripayService = new TripayPaymentService();
+
+            $payload = [
+                'name' => $order->customer_name,
+                'email' => $order->email,
+                'phone' => $order->phone,
+                'table_id' => $order->table_id,
+                'payment_channel' => $request->input('payment_channel', 'BRIVA'),
+                'fee_flat' => 0,
+                'fee_percent' => 0,
+                'note' => $order->note,
+                'amount' => (int) $order->amount,
+                'from_reservation' => true,
             ];
+
+            Log::info('Payload Tripay yang dikirim', $payload);
+
+            $result = $tripayService->handleOrder(
+                $payload,
+                collect($menuItemsPayload)->keyBy('sku')->map(function ($item) {
+                    return [
+                        'name' => $item['name'],
+                        'sku' => $item['sku'],
+                        'price' => $item['price'],
+                        'quantity' => $item['quantity'],
+                    ];
+                })->toArray(),
+                $order
+            );
+
+            Log::info('Response Tripay', ['result' => $result]);
+
+            if (isset($result['transaction']['data']['checkout_url'])) {
+                $checkoutUrl = $result['transaction']['data']['checkout_url'];
+            }
+
+            if (isset($order->id)) {
+                $paymentTransaction = \App\Models\PaymentTransaction::where('order_id', $order->id)->orderByDesc('created_at')->first();
+            }
+
+            // Ambil instruksi pembayaran jika ada
+            if (isset($result['transaction']['data']['instructions'])) {
+                $paymentInstructions = $result['transaction']['data']['instructions'];
+            } elseif ($paymentTransaction && isset($paymentTransaction->payment_response['data']['instructions'])) {
+                $paymentInstructions = $paymentTransaction->payment_response['data']['instructions'];
+            }
+
+            $menuNames = $menus->pluck('name')->toArray();
         }
 
-        $tripayService = new TripayPaymentService();
-
-        $payload = [
-            'name' => $order->customer_name,
-            'email' => $order->email,
-            'phone' => $order->phone,
-            'table_id' => $order->table_id,
-            'payment_channel' => $request->input('payment_channel', 'BRIVA'),
-            'fee_flat' => 0,
-            'fee_percent' => 0,
-            'note' => $order->note,
-            'amount' => $order->total_price,
-            'from_reservation' => true,
-        ];
-
-        Log::info('Payload Tripay yang dikirim', $payload);
-
-        $result = $tripayService->handleOrder(
-            $payload,
-            collect($menuItemsPayload)->keyBy('sku')->map(function ($item) {
-                return [
-                    'name' => $item['name'],
-                    'sku' => $item['sku'],
-                    'price' => $item['price'],
-                    'quantity' => $item['quantity'],
-                ];
-            })->toArray(),
-            $order
-        );
-
-        Log::info('Response Tripay', ['result' => $result]);
-
-        if (isset($result['transaction']['data']['checkout_url'])) {
-            $checkoutUrl = $result['transaction']['data']['checkout_url'];
+        // Jika tidak ada menu, tetap isi menuNames dari reservation
+        if (empty($menuNames) && !empty($reservation->menu_items)) {
+            $menuItemsArr = json_decode($reservation->menu_items, true);
+            $menuIds = array_column($menuItemsArr, 'menu_id');
+            $menuNames = Menu::whereIn('id', $menuIds)->pluck('name')->toArray();
         }
 
-        if (isset($order->id)) {
-            $paymentTransaction = \App\Models\PaymentTransaction::where('order_id', $order->id)->orderByDesc('created_at')->first();
-        }
+        Log::info($paymentTransaction, ['paymentTransaction' => $paymentTransaction]);
 
-        // Ambil instruksi pembayaran jika ada
-        if (isset($result['transaction']['data']['instructions'])) {
-            $paymentInstructions = $result['transaction']['data']['instructions'];
-        } elseif ($paymentTransaction && isset($paymentTransaction->payment_response['data']['instructions'])) {
-            $paymentInstructions = $paymentTransaction->payment_response['data']['instructions'];
-        }
+        // Hapus session reservation
+        $request->session()->forget('reservation');
 
-        $menuNames = $menus->pluck('name')->toArray();
+        // Redirect ke halaman thankyou berbasis order id
+        return redirect()->route('thankyou', ['order' => $order->id]);
     }
-
-    // Jika tidak ada menu, tetap isi menuNames dari reservation
-    if (empty($menuNames) && !empty($reservation->menu_items)) {
-        $menuItemsArr = json_decode($reservation->menu_items, true);
-        $menuIds = array_column($menuItemsArr, 'menu_id');
-        $menuNames = Menu::whereIn('id', $menuIds)->pluck('name')->toArray();
-    }
-
-    Log::info($paymentTransaction, ['paymentTransaction' => $paymentTransaction]);
-
-    // Hapus session reservation
-    $request->session()->forget('reservation');
-
-    // Redirect ke halaman thankyou berbasis order id
-    return redirect()->route('thankyou', ['order' => $order->id]);
-}
-
-
-    // public function storeStepFour(Request $request)
-    // {
-    //     Log::info('Mulai proses storeStepFour reservasi', ['input' => $request->all()]);
-    //     $reservation = $request->session()->get('reservation');
-
-    //     if (!$reservation) {
-    //         return redirect()->route('reservations.step-one')->with('error', 'Please complete the reservation form first.');
-    //     }
-        
-    //     // Simpan ke database
-    //     $reservationModel = new Reservation();
-    //     $reservationModel->fill((array) $reservation);
-    //     $reservationModel->status = 'pending';
-    //     $reservationModel->first_name = $reservation->first_name;
-    //     $reservationModel->last_name = $reservation->last_name;
-    //     $reservationModel->email = $reservation->email;
-    //     $reservationModel->tel_number = $reservation->tel_number;
-    //     $reservationModel->res_date = $reservation->res_date;
-    //     $reservationModel->table_id = $reservation->table_id;
-    //     $reservationModel->guest_number = $reservation->guest_number;
-    //     $reservationModel->save();
-    //     Log::info('Reservasi berhasil disimpan', ['reservation_id' => $reservationModel->id]);
-    //     $order = null;
-    //     $paymentTransaction = null;
-    //     $checkoutUrl = null;
-    //     $paymentInstructions = null;
-    //     $menuNames = [];
-    //     // Hitung over-people fee
-    //     $overPeopleFee = 0;
-    //     $overPeopleCount = 0;
-    //     $overPeopleFeePerPerson = 10000;
-    //     if ($reservation->guest_number > 10) {
-    //         $overPeopleCount = $reservation->guest_number - 10;
-    //         $overPeopleFee = $overPeopleCount * $overPeopleFeePerPerson;
-    //     }
-    //     // Jika ada menu, buat order dan payment Tripay
-    //     if (!empty($reservation->menu_items)) {
-    //         $amount = $this->calculateTotalPriceWithTax($reservation->menu_items) + $overPeopleFee;
-    //         $total_price = $this->calculateTotalPrice($reservation->menu_items) + $overPeopleFee;
-    //         $order = new Order();
-    //         $order->reservation_id = $reservationModel->id;
-    //         $order->menu_items = json_encode($reservation->menu_items);
-    //         $order->total_price = $total_price;
-    //         $order->amount = $amount;
-    //         $order->customer_name = $reservation->first_name . ' ' . $reservation->last_name;
-    //         $order->phone = $reservation->tel_number;
-    //         $order->email = $reservation->email;
-    //         $order->table_id = $reservation->table_id;
-    //         $order->note = null;
-    //         $order->tax = $this->calculateTax($this->calculateTotalPrice($reservation->menu_items));
-    //         $order->payment_status = 'pending';
-    //         $order->qris_screenshot = null;
-    //         $order->save();
-    //         Log::info('Order berhasil dibuat', ['order_id' => $order->id]);
-    //         $tripayService = new TripayPaymentService();
-    //         $menuItems = [];
-    //         $menus = \App\Models\Menu::whereIn('id', $reservation->menu_items)->get();
-    //         foreach ($menus as $menu) {
-    //             $menuItems[] = [
-    //                 'menu_id' => $menu->id,
-    //                 'sku' => $menu->sku,
-    //                 'name' => $menu->name,
-    //                 'price' => $menu->price,
-    //                 'quantity' => 1,
-    //             ];
-    //         }
-    //         // Tambahkan over-people fee ke Tripay payload jika ada
-    //         if ($overPeopleFee > 0) {
-    //             $menuItems[] = [
-    //                 'sku' => 'OVERPEOPLE',
-    //                 'name' => 'Biaya Tambahan Orang (' . $overPeopleCount . ' x ' . number_format($overPeopleFeePerPerson) . ')',
-    //                 'price' => $overPeopleFeePerPerson,
-    //                 'quantity' => $overPeopleCount,
-    //             ];
-    //         }
-    //         $payload = [
-    //             'name' => $order->customer_name,
-    //             'email' => $order->email,
-    //             'phone' => $order->phone,
-    //             'table_id' => $order->table_id,
-    //             'payment_channel' => $request->input('payment_channel', 'BRIVA'),
-    //             'fee_flat' => 0,
-    //             'fee_percent' => 0,
-    //             'note' => $order->note,
-    //             'amount' => $order->total_price,
-    //             'from_reservation' => true,
-    //         ];
-    //         Log::info('Payload Tripay yang dikirim', $payload);
-    //         $result = $tripayService->handleOrder($payload, collect($menuItems)->keyBy('sku')->map(function ($item) {
-    //             return [
-    //                 'name' => $item['name'],
-    //                 'price' => $item['price'],
-    //                 'quantity' => $item['quantity'],
-    //             ];
-    //         })->toArray(), $order);
-    //         Log::info('Response Tripay', ['result' => $result]);
-    //         if (isset($result['transaction']['data']['checkout_url'])) {
-    //             $checkoutUrl = $result['transaction']['data']['checkout_url'];
-    //         }
-    //         if (isset($order->id)) {
-    //             $paymentTransaction = \App\Models\PaymentTransaction::where('order_id', $order->id)->orderByDesc('created_at')->first();
-    //         }
-    //         // Ambil instruksi pembayaran jika ada
-    //         if (isset($result['transaction']['data']['instructions'])) {
-    //             $paymentInstructions = $result['transaction']['data']['instructions'];
-    //         } elseif ($paymentTransaction && isset($paymentTransaction->payment_response['data']['instructions'])) {
-    //             $paymentInstructions = $paymentTransaction->payment_response['data']['instructions'];
-    //         }
-    //         $menuNames = $menus->pluck('name')->toArray();
-    //     }
-    //     // ...jika tidak ada menu, tetap isi menuNames dari reservation
-    //     if (empty($menuNames) && !empty($reservation->menu_items)) {
-    //         $menuNames = Menu::whereIn('id', $reservation->menu_items)->pluck('name')->toArray();
-    //     }
-    //     Log::info($paymentTransaction, ['paymentTransaction' => $paymentTransaction]);
-    //     // Hapus session reservation
-    //     $request->session()->forget('reservation');
-    //     // Redirect ke halaman thankyou berbasis order id
-    //     return redirect()->route('thankyou', ['order' => $order->id]);
-    // }
 
     // Tambahkan method thankyou berbasis order id
     public function thankyou($orderId)
