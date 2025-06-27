@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use App\Services\TripayPaymentService;
+use App\Services\TripayService;
 
 class ReservationController extends Controller
 {
@@ -92,24 +93,19 @@ class ReservationController extends Controller
         if (!$reservation) {
             return redirect()->route('reservations.step-one')->with('error', 'Please complete the reservation form first.');
         }
-        // Ambil kategori yang tersedia
         $categories = Category::all();
 
-        // Ambil query untuk filter dan pencarian
         $menusQuery = Menu::query();
         // $menus = Menu::all();
 
-        // Pencarian berdasarkan keyword
         if ($request->has('search') && $request->search != '') {
             $menusQuery->where('name', 'like', '%' . $request->search . '%');
         }
 
-        // Filter berdasarkan kategori
         if ($request->has('category') && !empty($request->category)) {
             $menusQuery->whereIn('category_id', $request->category);
         }
 
-        // Ambil hasil menu yang sudah difilter dan dicari
         $menus = $menusQuery->get();
 
         return view('reservations.step-three', compact('menus', 'reservation', 'categories'));
@@ -131,10 +127,8 @@ class ReservationController extends Controller
         // $menuItems = $validated['menu_items'];
         // $quantities = $validated['quantities'];
 
-        // Initialize menu_items as an empty array
         $menuItemsWithQuantity = [];
 
-        // Populate the array with menu_id and quantity
         foreach ($validated['menu_items'] as $menuId) {
             $qty = $validated['quantities'][$menuId] ?? 1;
             $menuItemsWithQuantity[] = [
@@ -143,8 +137,7 @@ class ReservationController extends Controller
             ];
         }
 
-        // Store the selected menu items with quantities in session
-        $reservation->menu_items = json_encode($menuItemsWithQuantity); // Encode as JSON
+        $reservation->menu_items = json_encode($menuItemsWithQuantity);
         $request->session()->put('reservation', $reservation);
 
         return to_route('reservations.step-four');
@@ -169,16 +162,9 @@ class ReservationController extends Controller
         }
 
         $totalCost = 0;
-        // Cek apakah ada menu yang dipesan
         if (!empty($reservation->menu_items)) {
-            // Decode menu_items JSON menjadi array
             $menuItems = json_decode($reservation->menu_items, true);
 
-            // Mengambil ID menu dan menghitung harga total
-            // $menuIds = array_column($menuItems, 'menu_id'); // Ambil ID menu dari array
-            // $totalCost = Menu::whereIn('id', $menuIds)->sum('price');
-
-            // Menghitung total berdasarkan jumlah pesanan
             foreach ($menuItems as $item) {
                 $menu = Menu::find($item['menu_id']);
                 if ($menu) {
@@ -186,13 +172,11 @@ class ReservationController extends Controller
                 }
             }
         } else {
-            $totalCost = $reservation->guest_number * 50000; // contoh biaya per orang
+            $totalCost = $reservation->guest_number * 50000;
         }
 
-        // Ambil pilihan channel pembayaran
-        $channelsPayment = app(\App\Services\TripayService::class)->getPaymentChannels();
+        $channelsPayment = app(TripayService::class)->getPaymentChannels();
 
-        // Mengirim data ke view
         return view('reservations.step-four', compact(
             'totalCost',
             'reservation',
@@ -212,17 +196,16 @@ class ReservationController extends Controller
             return redirect()->route('reservations.step-one')->with('error', 'Please complete the reservation form first.');
         }
 
-        // Simpan ke database
         $reservationModel = new Reservation();
-        $reservationModel->fill((array) $reservation);
-        $reservationModel->status = 'pending';
-        $reservationModel->first_name = $reservation->first_name;
-        $reservationModel->last_name = $reservation->last_name;
-        $reservationModel->email = $reservation->email;
-        $reservationModel->tel_number = $reservation->tel_number;
-        $reservationModel->res_date = $reservation->res_date;
+        $reservationModel->first_name = $reservation->first_name ?? 'John';
+        $reservationModel->last_name = $reservation->last_name ?? 'Doe';
+        $reservationModel->email = $reservation->email ?? 'default@example.com';
+        $reservationModel->tel_number = $reservation->tel_number ?? '-';
         $reservationModel->table_id = $reservation->table_id;
         $reservationModel->guest_number = $reservation->guest_number;
+        $reservationModel->res_date = $reservation->res_date;
+
+        $reservationModel->status = 'pending';
         $reservationModel->save();
 
         Log::info('Reservasi berhasil disimpan', ['reservation_id' => $reservationModel->id]);
@@ -233,7 +216,6 @@ class ReservationController extends Controller
         $paymentInstructions = null;
         $menuNames = [];
 
-        // Hitung over-people fee
         $overPeopleFee = 0;
         $overPeopleCount = 0;
         $overPeopleFeePerPerson = 10000;
@@ -242,49 +224,14 @@ class ReservationController extends Controller
             $overPeopleFee = $overPeopleCount * $overPeopleFeePerPerson;
         }
 
+        $menuItemsPayload = [];
+        $menuItemsArr = [];
+
         if (!empty($reservation->menu_items)) {
-            // Decode JSON menu_items yang berisi array objek {menu_id, quantity}
             $menuItemsArr = json_decode($reservation->menu_items, true);
-
-            // Ambil semua menu ID yang dipesan
             $menuIds = array_column($menuItemsArr, 'menu_id');
-
-            // Ambil data menu lengkap dari DB
             $menus = \App\Models\Menu::whereIn('id', $menuIds)->get();
 
-            // Hitung total harga sesuai quantity + biaya tambahan over people fee
-            $total_price = 0;
-            foreach ($menuItemsArr as $item) {
-                $menu = $menus->where('id', $item['menu_id'])->first();
-                if ($menu) {
-                    $total_price += $menu->price * $item['quantity'];
-                }
-            }
-            $total_price += $overPeopleFee;
-
-            $amount = $total_price + $this->calculateTax($total_price);
-            // dd($amount);
-
-            // Simpan order
-            $order = new Order();
-            $order->reservation_id = $reservationModel->id;
-            $order->menu_items = $reservation->menu_items; // sudah json string
-            $order->total_price = $total_price;
-            $order->amount = $amount;
-            $order->customer_name = $reservation->first_name . ' ' . $reservation->last_name;
-            $order->phone = $reservation->tel_number;
-            $order->email = $reservation->email;
-            $order->table_id = $reservation->table_id;
-            $order->note = null;
-            $order->tax = $this->calculateTax($total_price);
-            $order->payment_status = 'pending';
-            $order->qris_screenshot = null;
-            $order->save();
-
-            Log::info('Order berhasil dibuat', ['order_id' => $order->id]);
-
-            // Persiapkan payload menu untuk Tripay dengan quantity yang benar
-            $menuItemsPayload = [];
             foreach ($menuItemsArr as $item) {
                 $menu = $menus->where('id', $item['menu_id'])->first();
                 if ($menu) {
@@ -298,17 +245,46 @@ class ReservationController extends Controller
                 }
             }
 
-            // Tambahkan biaya over-people jika ada
             if ($overPeopleFee > 0) {
                 $menuItemsPayload[] = [
                     'sku' => 'OVERPEOPLE',
-                    'name' => 'Biaya Tambahan Orang (' . $overPeopleCount . ' x Rp' . number_format((int) $overPeopleFeePerPerson, 0, ',', '.') . ')',
+                    'name' => 'Biaya Tambahan Orang (' . $overPeopleCount . ' x Rp' . number_format($overPeopleFeePerPerson, 0, ',', '.') . ')',
                     'price' => $overPeopleFeePerPerson,
                     'quantity' => $overPeopleCount,
                 ];
             }
 
-            $tripayService = new TripayPaymentService();
+            // Hitung total harga dari item
+            $baseAmount = $this->calculateAmountFromItems($menuItemsPayload);
+            $taxAmount = $this->calculateTax($baseAmount);
+            $amount = round($baseAmount + $taxAmount);
+
+            // dd($amount);
+
+            Log::info('Perhitungan total berdasarkan item', [
+                'baseAmount' => $baseAmount,
+                'taxAmount' => $taxAmount,
+                'finalAmount' => $amount,
+            ]);
+
+            $order = new Order();
+            $order->reservation_id = $reservationModel->id;
+            $order->menu_items = $reservation->menu_items;
+            $order->total_price = $baseAmount;
+            $order->amount = $amount;
+            $order->customer_name = $reservation->first_name . ' ' . $reservation->last_name;
+            $order->phone = $reservation->tel_number;
+            $order->email = $reservation->email;
+            $order->table_id = $reservation->table_id;
+            $order->note = null;
+            $order->tax = $taxAmount;
+            $order->payment_status = 'pending';
+            $order->qris_screenshot = null;
+            $order->save();
+
+            Log::info('Order berhasil dibuat', ['order_id' => $order->id]);
+
+            $tripayService = new TripayService();
 
             $payload = [
                 'name' => $order->customer_name,
@@ -319,9 +295,11 @@ class ReservationController extends Controller
                 'fee_flat' => 0,
                 'fee_percent' => 0,
                 'note' => $order->note,
-                'amount' => (int) $order->amount,
+                'amount' => (int) $amount,
                 'from_reservation' => true,
             ];
+
+            // dd($payload);
 
             Log::info('Payload Tripay yang dikirim', $payload);
 
@@ -348,7 +326,6 @@ class ReservationController extends Controller
                 $paymentTransaction = \App\Models\PaymentTransaction::where('order_id', $order->id)->orderByDesc('created_at')->first();
             }
 
-            // Ambil instruksi pembayaran jika ada
             if (isset($result['transaction']['data']['instructions'])) {
                 $paymentInstructions = $result['transaction']['data']['instructions'];
             } elseif ($paymentTransaction && isset($paymentTransaction->payment_response['data']['instructions'])) {
@@ -358,28 +335,33 @@ class ReservationController extends Controller
             $menuNames = $menus->pluck('name')->toArray();
         }
 
-        // Jika tidak ada menu, tetap isi menuNames dari reservation
         if (empty($menuNames) && !empty($reservation->menu_items)) {
             $menuItemsArr = json_decode($reservation->menu_items, true);
             $menuIds = array_column($menuItemsArr, 'menu_id');
-            $menuNames = Menu::whereIn('id', $menuIds)->pluck('name')->toArray();
+            $menuNames = \App\Models\Menu::whereIn('id', $menuIds)->pluck('name')->toArray();
         }
 
-        Log::info($paymentTransaction, ['paymentTransaction' => $paymentTransaction]);
+        Log::info('Final paymentTransaction status', ['paymentTransaction' => $paymentTransaction]);
 
-        // Hapus session reservation
         $request->session()->forget('reservation');
 
-        // Redirect ke halaman thankyou berbasis order id
         return redirect()->route('thankyou', ['order' => $order->id]);
     }
 
-    // Tambahkan method thankyou berbasis order id
+
+    private function calculateAmountFromItems(array $items): int
+    {
+        $total = 0;
+        foreach ($items as $item) {
+            $total += $item['price'] * $item['quantity'];
+        }
+        return round($total);
+    }
+
     public function thankyou($orderId)
     {
         $order = \App\Models\Order::with('orderItems')->findOrFail($orderId);
         $reservation = $order->reservation ?? null;
-        // Ambil PaymentTransaction terbaru via relasi order
         $payment = PaymentTransaction::where('order_id', $order->id)->latest()->first();
         $menu_names = method_exists($order, 'menus') ? $order->menus->pluck('name')->toArray() : [];
         if (!$reservation && method_exists($order, 'reservation')) {
@@ -395,7 +377,6 @@ class ReservationController extends Controller
             'table_name' => optional($reservation->table)->name ?? optional($order->table)->name ?? '-',
             'menu_names' => $menu_names,
         ] : null;
-        // Ambil instruksi pembayaran dan checkout_url
         $payment_instructions = null;
         $checkout_url = null;
         if ($payment) {
@@ -422,7 +403,6 @@ class ReservationController extends Controller
         ]);
     }
 
-    // Helper functions to calculate total price based on menu items selected
     protected function calculateTotalPrice($menuItems)
     {
         $menus = Menu::whereIn('id', $menuItems)->get();
@@ -431,7 +411,7 @@ class ReservationController extends Controller
 
     protected function calculateTax($amount)
     {
-        return round($amount * 0.1, 2); // Pajak 10%
+        return round($amount * 0.1, 2);
     }
 
     protected function calculateTotalPriceWithTax($menuItems)
