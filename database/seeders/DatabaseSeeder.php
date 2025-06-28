@@ -27,12 +27,12 @@ class DatabaseSeeder extends Seeder
             UserDemoSeeder::class,
             // tambahkan seeder lain jika perlu
         ]);
-        Menu::create([
-        'name' => 'Pajak 10%',
-        'sku' => 'TAX10',
-        'price' => 2000,  // Pajak tetap per order
-        'category_id' => 1,  // Sesuaikan dengan kategori yang ada
-        'image' => 'default_tax_image.jpg',  // Gambar placeholder
-    ]);
+    //     Menu::create([
+    //     'name' => 'Pajak 10%',
+    //     'sku' => 'TAX10',
+    //     'price' => 2000,  // Pajak tetap per order
+    //     'category_id' => 1,  // Sesuaikan dengan kategori yang ada
+    //     'image' => 'default_tax_image.jpg',  // Gambar placeholder
+    // ]);
     }
 }

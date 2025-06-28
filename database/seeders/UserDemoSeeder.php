@@ -17,7 +17,7 @@ class UserDemoSeeder extends Seeder
       'email_verified_at' => now(),
       'password' => Hash::make('password'), // password
       'remember_token' => Str::random(10),
-      'is_admin' => 0
+      'is_admin' => 0,
     ]);
   }
 }
