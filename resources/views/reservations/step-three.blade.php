@@ -65,19 +65,37 @@
                         @endif
 
                         {{-- rekomendasi menu untuk user --}}
-                        @if (isset($namaMenuRekomendasi) && $namaMenuRekomendasi->isNotEmpty())
-                            <div role="alert"
-                                class="mb-6 px-4 py-3 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 rounded-lg">
-                                <div class="flex items-center">
-                                    <svg class="w-6 h-6 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"
-                                        xmlns="http://www.w3.org/2000/svg">
-                                        <path fill-rule="evenodd"
-                                            d="M18 10c0 4.418-3.582 8-8 8s-8-3.582-8-8 3.582-8 8-8 8 3.582 8 8zm-9-3a1 1 0 112 0v4a1 1 0 11-2 0V7zm1 8a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"
-                                            clip-rule="evenodd"></path>
-                                    </svg>
-                                    <p class="font-semibold">Rekomendasi Menu:</p>
+                        @if ($namaMenuRekomendasi->isNotEmpty())
+                            <div x-data="{ open: true }" x-show="open"
+                                class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                                <div class="bg-white rounded-lg overflow-hidden shadow-xl max-w-md w-full">
+                                    <div class="p-6 text-center">
+                                        <p class="text-white mb-6 text-xl">Rekomendasi Menu:</p>
+
+                                        <div class="flex flex-wrap justify-center gap-4 mb-6 px-2">
+                                            @foreach ($namaMenuRekomendasi as $menu)
+                                                <div class="w-24 flex flex-col items-center">
+                                                    <img src="{{ Storage::url($menu->image) }}"
+                                                        alt="{{ $menu->name }}"
+                                                        class="w-24 h-24 object-cover rounded-md mb-1" />
+                                                    <span class="text-sm font-medium text-yellow-300 text-center">
+                                                        {{ $menu->name }}
+                                                    </span>
+                                                    <span class="text-xs text-orange-400">
+                                                        Rp{{ number_format($menu->price, 0, ',', '.') }}
+                                                    </span>
+                                                </div>
+                                            @endforeach
+                                        </div>
+
+                                        <button @click="open = false"
+                                            class="inline-block px-6 py-2 bg-yellow-400 text-black rounded-md
+         transition duration-200 ease-in-out
+         hover:bg-gray-200 hover:text-black">
+                                            OK
+                                        </button>
+                                    </div>
                                 </div>
-                                <p class="mt-2">{{ $namaMenuRekomendasi->implode(', ') }}</p>
                             </div>
                         @endif
 
@@ -165,4 +183,5 @@
             });
         });
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 </x-guest-layout>

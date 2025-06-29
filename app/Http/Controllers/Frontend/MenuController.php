@@ -22,93 +22,93 @@ class MenuController extends Controller
      * @return array
      */
     public function index(Request $request)
-{
-    $categories = Category::with('menus')->get();  
-    $tables = Table::all();
-    $menus = Menu::all();
-    
+    {
+        $categories = Category::with('menus')->get();
+        $tables = Table::all();
+        $menus = Menu::all();
 
-     // Ambil menu dengan rating tertinggi dari tiap kategori
-    $highestRatedMenus = $this->getHighestRatedMenuPerCategory();
 
-    // Filter berdasarkan kategori yang dipilih
-    $selectedCategories = $request->input('category', []);
+        // Ambil menu dengan rating tertinggi dari tiap kategori
+        $highestRatedMenus = $this->getHighestRatedMenuPerCategory();
 
-     // Ambil item yang ada di keranjang
-    $cart = session()->get('cart', []);
-    Log::info('Cart data:', $cart);
-    $cartSkus = array_keys($cart);
+        // Filter berdasarkan kategori yang dipilih
+        $selectedCategories = $request->input('category', []);
 
-     // Dapatkan menu rekomendasi berdasarkan item similarity
-    $recommendedItems = $this->getRecommendedItems($request->cookie('cust_uid'));
-    // Mendapatkan keyword pencarian dari input
-    $searchKeyword = $request->input('search'); 
+        // Ambil item yang ada di keranjang
+        $cart = session()->get('cart', []);
+        Log::info('Cart data:', $cart);
+        $cartSkus = array_keys($cart);
 
-    $query = Menu::query();
+        // Dapatkan menu rekomendasi berdasarkan item similarity
+        $recommendedItems = $this->getRecommendedItems($request->cookie('cust_uid'));
+        // Mendapatkan keyword pencarian dari input
+        $searchKeyword = $request->input('search');
 
-    // Filter berdasarkan kategori yang dipilih
-    if (!empty($selectedCategories)) {
-        $query->whereIn('category_id', $selectedCategories);  // Menggunakan category_id untuk filter menu
+        $query = Menu::query();
+
+        // Filter berdasarkan kategori yang dipilih
+        if (!empty($selectedCategories)) {
+            $query->whereIn('category_id', $selectedCategories);  // Menggunakan category_id untuk filter menu
+        }
+
+        // Filter berdasarkan keyword pencarian
+        if ($searchKeyword) {
+            $query->where(function ($q) use ($searchKeyword) {
+                $q->where('name', 'like', '%' . $searchKeyword . '%')
+                    ->orWhere('description', 'like', '%' . $searchKeyword . '%');
+            });
+        }
+
+        $menus = $query->get();  // Mendapatkan menu berdasarkan filter
+
+        // Mengirimkan data ke view
+        return view('menus.index', compact(
+            'categories',
+            'tables',
+            'menus',
+            'selectedCategories',
+            'recommendedItems',
+            'highestRatedMenus'
+        ));
     }
 
-    // Filter berdasarkan keyword pencarian
-    if ($searchKeyword) {
-        $query->where(function($q) use ($searchKeyword) {
-            $q->where('name', 'like', '%' . $searchKeyword . '%')
-              ->orWhere('description', 'like', '%' . $searchKeyword . '%');
-        });
+
+
+    public function addToCart(Request $request, $menuId)
+    {
+        // Cek apakah menu ditemukan
+        $menu = Menu::findOrFail($menuId);
+
+        // if (!$menu) {
+        //     // Jika menu tidak ada, buat menu pajak dengan ID default atau tambahkan menu pajak ke database
+        //     $menuId = 0; // ID menu default atau buat entri pajak di menus
+        //     $menu = new Menu();
+        //     $menu->name = "Pajak 10%";
+        //     $menu->price = 2100;
+        //     $menu->save(); // Menyimpan item pajak ke menus jika diperlukan
+        // }
+
+        // Pastikan menu pajak tidak ditambahkan ke keranjang
+        if ($menu->name === 'Pajak 10%') {
+            return redirect()->route('menus.index')->with('error', 'Menu pajak tidak dapat ditambahkan ke keranjang.');
+        }
+
+        // Melanjutkan penambahan ke keranjang
+        $cart = session()->get('cart', []);
+        if (isset($cart[$menuId])) {
+            $cart[$menuId]['quantity']++;
+        } else {
+            $cart[$menuId] = [
+                'name' => $menu->name,
+                'price' => $menu->price,
+                'quantity' => 1,
+                'image' => $menu->image ?? 'default.jpg',
+                'rating' => $menu->rating ?? 0,
+            ];
+        }
+        session()->put('cart', $cart);
+        return redirect()->route('menus.index');
     }
-
-    $menus = $query->get();  // Mendapatkan menu berdasarkan filter
-
-    // Mengirimkan data ke view
-    return view('menus.index', compact(
-        'categories',
-        'tables',
-        'menus',
-        'selectedCategories',
-        'recommendedItems',
-        'highestRatedMenus'
-    ));
-}
-
-        
-
-  public function addToCart(Request $request, $menuId)
-{
-    // Cek apakah menu ditemukan
-    $menu = Menu::findOrFail($menuId);
-
-    // if (!$menu) {
-    //     // Jika menu tidak ada, buat menu pajak dengan ID default atau tambahkan menu pajak ke database
-    //     $menuId = 0; // ID menu default atau buat entri pajak di menus
-    //     $menu = new Menu();
-    //     $menu->name = "Pajak 10%";
-    //     $menu->price = 2100;
-    //     $menu->save(); // Menyimpan item pajak ke menus jika diperlukan
-    // }
-
-    // Pastikan menu pajak tidak ditambahkan ke keranjang
-    if ($menu->name === 'Pajak 10%') {
-        return redirect()->route('menus.index')->with('error', 'Menu pajak tidak dapat ditambahkan ke keranjang.');
-    }
-
-    // Melanjutkan penambahan ke keranjang
-    $cart = session()->get('cart', []);
-    if (isset($cart[$menuId])) {
-        $cart[$menuId]['quantity']++;
-    } else {
-        $cart[$menuId] = [
-            'name' => $menu->name,
-            'price' => $menu->price,
-            'quantity' => 1,
-            'image' => $menu->image ?? 'default.jpg',
-            'rating' => $menu->rating ?? 0,
-        ];
-    }
-    session()->put('cart', $cart);
-    return redirect()->route('menus.index');
-}
 
 
 
@@ -134,7 +134,7 @@ class MenuController extends Controller
 
     public function checkout(Request $request)
     {
-       
+
         $cart = session()->get('cart');
         if (empty($cart)) {
             return redirect()->route('menus.index')->with('error', 'Keranjang anda kosong!');
@@ -147,25 +147,25 @@ class MenuController extends Controller
         }
 
         // Hitung total harga tanpa pajak
-            $total = 0;
-            foreach ($cart as $item) {
-                if ($item['name'] !== 'Pajak 10%') {  // Abaikan menu pajak
-                    $total += $item['price'] * $item['quantity'];
-                }
+        $total = 0;
+        foreach ($cart as $item) {
+            if ($item['name'] !== 'Pajak 10%') {  // Abaikan menu pajak
+                $total += $item['price'] * $item['quantity'];
             }
+        }
 
-             // Menghitung pajak 10% berdasarkan subtotal
-            $tax = $total * 0.10;  // 10% pajak
-            $totalWithTax = $total + $tax;  // Total dengan pajak
+        // Menghitung pajak 10% berdasarkan subtotal
+        $tax = $total * 0.10;  // 10% pajak
+        $totalWithTax = $total + $tax;  // Total dengan pajak
 
-             Log::info('Checkout initiated', [
+        Log::info('Checkout initiated', [
             'cart' => $cart,
             'total' => $total,
             'tax' => $tax,
             'totalWithTax' => $totalWithTax,
         ]);
         $tables = Table::all(); // Mengambil semua meja dari database
-        
+
         // Ambil daftar channel pembayaran dari TripayService
         $channelsPayment = app(TripayService::class)->getPaymentChannels();
         Log::info('Checkout initiated', [
@@ -174,7 +174,7 @@ class MenuController extends Controller
             'channelsPayment' => $channelsPayment,
         ]);
 
-        
+
         return view('menus.checkout', compact('cart', 'tables', 'channelsPayment', 'total', 'tax', 'totalWithTax'));
     }
 
@@ -252,155 +252,152 @@ class MenuController extends Controller
      *
      * @param int $menuId
      * @return \Illuminate\Http\JsonResponse
-     */    
-public function getRecommendedItems($cust_uid)
-{
-    // // Jika tidak ada item di keranjang, kembalikan koleksi kosong
-    // if (empty($cartSkus)) {
-    //     return collect();
-    // }
+     */
+    public function getRecommendedItems($cust_uid)
+    {
+        // // Jika tidak ada item di keranjang, kembalikan koleksi kosong
+        // if (empty($cartSkus)) {
+        //     return collect();
+        // }
 
-    // // Jika hanya ada satu item di keranjang, rekomendasikan berdasarkan popularitas
-    // if (count($cartSkus) == 1) {
-    //     return $this->getPopularItems();  // Fungsi untuk mengambil menu populer
-    // }
+        // // Jika hanya ada satu item di keranjang, rekomendasikan berdasarkan popularitas
+        // if (count($cartSkus) == 1) {
+        //     return $this->getPopularItems();  // Fungsi untuk mengambil menu populer
+        // }
 
-    // // Tentukan jumlah pesanan minimum (3 kali lebih banyak dari pesanan item di keranjang)
-    // $minOrders = 3;
+        // // Tentukan jumlah pesanan minimum (3 kali lebih banyak dari pesanan item di keranjang)
+        // $minOrders = 3;
 
-    // // Ambil pasangan item yang mirip, mengecualikan 'TAX10'
-    // $similarPairs = DB::table('item_similarities')
-    //     ->whereIn('menu_id_1', $cartSkus)
-    //     ->orWhereIn('menu_id_2', $cartSkus)
-    //     ->whereNotIn('menu_id_1', ['TAX10'])
-    //     ->whereNotIn('menu_id_2', ['TAX10'])
-    //     ->orderBy('similarity_score', 'desc')
-    //     ->limit(10)
-    //     ->get();
+        // // Ambil pasangan item yang mirip, mengecualikan 'TAX10'
+        // $similarPairs = DB::table('item_similarities')
+        //     ->whereIn('menu_id_1', $cartSkus)
+        //     ->orWhereIn('menu_id_2', $cartSkus)
+        //     ->whereNotIn('menu_id_1', ['TAX10'])
+        //     ->whereNotIn('menu_id_2', ['TAX10'])
+        //     ->orderBy('similarity_score', 'desc')
+        //     ->limit(10)
+        //     ->get();
 
-    // $similarSkus = [];
-    // foreach ($similarPairs as $pair) {
-    //     if (in_array($pair->menu_id_1, $cartSkus)) {
-    //         $similarSkus[] = $pair->menu_id_2;
-    //     }
-    //     if (in_array($pair->menu_id_2, $cartSkus)) {
-    //         $similarSkus[] = $pair->menu_id_1;
-    //     }
-    // }
+        // $similarSkus = [];
+        // foreach ($similarPairs as $pair) {
+        //     if (in_array($pair->menu_id_1, $cartSkus)) {
+        //         $similarSkus[] = $pair->menu_id_2;
+        //     }
+        //     if (in_array($pair->menu_id_2, $cartSkus)) {
+        //         $similarSkus[] = $pair->menu_id_1;
+        //     }
+        // }
 
-    // // Mengambil rekomendasi unik yang tidak ada di keranjang
-    // $uniqueRecommendedSkus = array_diff(array_unique($similarSkus), $cartSkus);
+        // // Mengambil rekomendasi unik yang tidak ada di keranjang
+        // $uniqueRecommendedSkus = array_diff(array_unique($similarSkus), $cartSkus);
 
-    // // Jika ada rekomendasi yang valid
-    // if (!empty($uniqueRecommendedSkus)) {
-    //     $recommendedItems = Menu::whereIn('sku', $uniqueRecommendedSkus)
-    //         ->inRandomOrder()
-    //         ->limit(3)
-    //         ->get();
+        // // Jika ada rekomendasi yang valid
+        // if (!empty($uniqueRecommendedSkus)) {
+        //     $recommendedItems = Menu::whereIn('sku', $uniqueRecommendedSkus)
+        //         ->inRandomOrder()
+        //         ->limit(3)
+        //         ->get();
 
-    //     // Jika rekomendasi kurang dari 3, tambahkan menu lainnya secara acak
-    //     if ($recommendedItems->count() < 3) {
-    //         $additionalItems = Menu::whereNotIn('sku', $uniqueRecommendedSkus)
-    //             ->inRandomOrder()
-    //             ->limit(3 - $recommendedItems->count())
-    //             ->get();
+        //     // Jika rekomendasi kurang dari 3, tambahkan menu lainnya secara acak
+        //     if ($recommendedItems->count() < 3) {
+        //         $additionalItems = Menu::whereNotIn('sku', $uniqueRecommendedSkus)
+        //             ->inRandomOrder()
+        //             ->limit(3 - $recommendedItems->count())
+        //             ->get();
 
-    //         $recommendedItems = $recommendedItems->merge($additionalItems);
-    //     }
+        //         $recommendedItems = $recommendedItems->merge($additionalItems);
+        //     }
 
-    //     return $recommendedItems;
-    // }
+        //     return $recommendedItems;
+        // }
 
-    // // Jika tidak ada rekomendasi, kembalikan koleksi kosong
-    // return collect();
-    $rekomendasi = collect();
-    $db = DataRekomendasi::where('cust_uid',$cust_uid)->first();
-    if($db == null){
+        // // Jika tidak ada rekomendasi, kembalikan koleksi kosong
+        // return collect();
+        $rekomendasi = collect();
+        $db = DataRekomendasi::where('cust_uid', $cust_uid)->first();
+        if ($db == null) {
+            return $rekomendasi;
+        }
+        foreach (explode(",", $db["menu_id"]) as $a) {
+            $hasil = Menu::where('id', $a)->first();
+            $rekomendasi->push($hasil);
+        }
         return $rekomendasi;
     }
-    foreach(explode(",",$db["menu_id"]) as $a){
-        $hasil = Menu::where('id',$a)->first();
-        $rekomendasi->push($hasil);
+
+    // Fungsi untuk mendapatkan menu populer
+    private function getPopularItems()
+    {
+        // Mendapatkan menu yang paling sering dipesan
+        return DB::table('order_items')
+            ->select('menu_id', DB::raw('COUNT(*) as order_count'))
+            ->groupBy('menu_id')
+            ->orderBy('order_count', 'desc')  // Urutkan berdasarkan jumlah pesanan
+            ->limit(3)
+            ->pluck('menu_id')
+            ->map(function ($menuId) {
+                return Menu::find($menuId);
+            });
     }
-    return $rekomendasi;
-}
 
-// Fungsi untuk mendapatkan menu populer
-private function getPopularItems()
-{
-    // Mendapatkan menu yang paling sering dipesan
-    return DB::table('order_items')
-        ->select('menu_id', DB::raw('COUNT(*) as order_count'))
-        ->groupBy('menu_id')
-        ->orderBy('order_count', 'desc')  // Urutkan berdasarkan jumlah pesanan
-        ->limit(3)
-        ->pluck('menu_id')
-        ->map(function ($menuId) {
-            return Menu::find($menuId);
-        });
-}
+    public function getHighestRatedMenuPerCategory()
+    {
+        // Ambil kategori yang ada
+        $categories = Category::all();
 
-public function getHighestRatedMenuPerCategory()
-{
-    // Ambil kategori yang ada
-    $categories = Category::all();
+        $highestRatedMenus = [];
 
-    $highestRatedMenus = [];
+        foreach ($categories as $category) {
+            // Ambil menu dengan rating tertinggi di setiap kategori
+            $highestRatedMenu = Menu::where('category_id', $category->id)
+                ->orderBy('rating', 'desc')  // Urutkan berdasarkan rating tertinggi
+                ->first();  // Ambil hanya menu pertama (rating tertinggi)
 
-    foreach ($categories as $category) {
-        // Ambil menu dengan rating tertinggi di setiap kategori
-        $highestRatedMenu = Menu::where('category_id', $category->id)
-            ->orderBy('rating', 'desc')  // Urutkan berdasarkan rating tertinggi
-            ->first();  // Ambil hanya menu pertama (rating tertinggi)
+            if ($highestRatedMenu) {
+                $highestRatedMenus[$category->id] = $highestRatedMenu;
+            }
+        }
 
-        if ($highestRatedMenu) {
-            $highestRatedMenus[$category->id] = $highestRatedMenu;
+        return $highestRatedMenus;
+    }
+
+    public function updateMenuRating($menuId)
+    {
+        // Ambil semua rating dari tabel user_menu_rekomendasis (atau tabel lain yang menyimpan rating)
+        $ratings = DB::table('user_menu_rekomendasis')
+            ->where('menu_id', $menuId)
+            ->pluck('rating');  // Ambil semua rating untuk menu ini
+
+        if ($ratings->isNotEmpty()) {
+            // Hitung rata-rata rating
+            $averageRating = $ratings->avg();  // Fungsi avg() menghitung rata-rata
+
+            // Update rating pada tabel menus
+            Menu::where('id', $menuId)
+                ->update(['rating' => $averageRating]);  // Update rating dengan rata-rata
         }
     }
 
-    return $highestRatedMenus;
-}
+    public function storeFeedback(Request $request, $menuId)
+    {
+        // Validasi rating yang diterima dari pengguna
+        $request->validate([
+            'rating' => 'required|numeric|min:1|max:5',  // Rating harus antara 1 dan 5
+        ]);
 
-public function updateMenuRating($menuId)
-{
-    // Ambil semua rating dari tabel user_menu_rekomendasis (atau tabel lain yang menyimpan rating)
-    $ratings = DB::table('user_menu_rekomendasis')
-        ->where('menu_id', $menuId)
-        ->pluck('rating');  // Ambil semua rating untuk menu ini
+        // Simpan rating baru di tabel user_menu_rekomendasis
+        DB::table('user_menu_rekomendasis')->insert([
+            'user_id' => auth()->id(),  // ID pengguna
+            'menu_id' => $menuId,  // ID menu yang diberi rating
+            'rating' => $request->rating,  // Rating yang diberikan
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
 
-    if ($ratings->isNotEmpty()) {
-        // Hitung rata-rata rating
-        $averageRating = $ratings->avg();  // Fungsi avg() menghitung rata-rata
+        // Update rating menu berdasarkan rata-rata rating
+        $this->updateMenuRating($menuId);
 
-        // Update rating pada tabel menus
-        Menu::where('id', $menuId)
-            ->update(['rating' => $averageRating]);  // Update rating dengan rata-rata
+        // Redirect atau beri feedback kepada pengguna
+        return redirect()->back()->with('success', 'Rating berhasil diberikan');
     }
-}
-
-public function storeFeedback(Request $request, $menuId)
-{
-    // Validasi rating yang diterima dari pengguna
-    $request->validate([
-        'rating' => 'required|numeric|min:1|max:5',  // Rating harus antara 1 dan 5
-    ]);
-
-    // Simpan rating baru di tabel user_menu_rekomendasis
-    DB::table('user_menu_rekomendasis')->insert([
-        'user_id' => auth()->id(),  // ID pengguna
-        'menu_id' => $menuId,  // ID menu yang diberi rating
-        'rating' => $request->rating,  // Rating yang diberikan
-        'created_at' => now(),
-        'updated_at' => now(),
-    ]);
-
-    // Update rating menu berdasarkan rata-rata rating
-    $this->updateMenuRating($menuId);
-
-    // Redirect atau beri feedback kepada pengguna
-    return redirect()->back()->with('success', 'Rating berhasil diberikan');
-}
-
-
-
 }

@@ -41,6 +41,38 @@
                             @csrf
 
                             <!-- Summary Card -->
+                            @if (!empty($rincianMenu))
+                                <div class="bg-gray-800 p-6 rounded-lg mb-6">
+                                    <h4 class="text-lg font-semibold text-gray-200 mb-4">Detail Menu</h4>
+                                    <div class="overflow-x-auto">
+                                        <table class="min-w-full text-left text-gray-300">
+                                            <thead>
+                                                <tr>
+                                                    <th class="px-4 py-2">Nama</th>
+                                                    <th class="px-4 py-2">Harga</th>
+                                                    <th class="px-4 py-2">Jumlah</th>
+                                                    <th class="px-4 py-2">Subtotal</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach ($rincianMenu as $item)
+                                                    <tr class="border-t border-gray-700">
+                                                        <td class="px-4 py-2">{{ $item['name'] }}</td>
+                                                        <td class="px-4 py-2">
+                                                            Rp{{ number_format($item['price'], 0, ',', '.') }}</td>
+                                                        <td class="px-4 py-2">{{ $item['quantity'] }}</td>
+                                                        <td class="px-4 py-2 font-semibold">
+                                                            Rp{{ number_format($item['subtotal'], 0, ',', '.') }}
+                                                        </td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            @endif
+
+
                             <div class="bg-gray-800 p-6 rounded-lg">
                                 <div class="flex justify-between mb-2">
                                     <span class="text-gray-400">Subtotal</span>

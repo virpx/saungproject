@@ -107,8 +107,7 @@ class ReservationController extends Controller
                 ->map(fn($v) => (int) $v)
                 ->all();
 
-            $namaMenuRekomendasi = Menu::whereIn('id', $ids)
-                ->pluck('name');
+            $namaMenuRekomendasi = Menu::whereIn('id', $ids)->get(['id', 'name', 'description', 'image', 'price']);
 
             // dd($namaMenuRekomendasi);
         } else {
@@ -189,13 +188,25 @@ class ReservationController extends Controller
         }
 
         $totalCost = 0;
+        $rincianMenu = [];
+
         if (!empty($reservation->menu_items)) {
             $menuItems = json_decode($reservation->menu_items, true);
+            // dd($menuItems);
 
             foreach ($menuItems as $item) {
-                $menu = Menu::find($item['menu_id']);
-                if ($menu) {
-                    $totalCost += $menu->price * $item['quantity'];
+                $menuNya = Menu::find($item['menu_id']);
+                if ($menuNya) {
+                    $subtotal = $menuNya->price * $item['quantity'];
+                    $totalCost += $subtotal;
+
+                    $rincianMenu[] = [
+                        'name'        => $menuNya->name,
+                        'description' => $menuNya->description,
+                        'price'       => $menuNya->price,
+                        'quantity'    => $item['quantity'],
+                        'subtotal'    => $subtotal,
+                    ];
                 }
             }
         } else {
@@ -210,7 +221,8 @@ class ReservationController extends Controller
             'channelsPayment',
             'overPeopleFee',
             'overPeopleCount',
-            'overPeopleFeePerPerson'
+            'overPeopleFeePerPerson',
+            'rincianMenu'
         ));
     }
 
