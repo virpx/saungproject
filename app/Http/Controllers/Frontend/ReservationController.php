@@ -307,7 +307,18 @@ class ReservationController extends Controller
             $order->tax = $taxAmount;
             $order->payment_status = 'pending';
             $order->qris_screenshot = null;
+            $order->cust_uid = $request->cookie("cust_uid");
             $order->save();
+
+            foreach ($menuItemsPayload as $itemPayload) {
+                $order->orderItems()->create([
+                    'menu_id' => $itemPayload['menu_id'] ?? null,
+                    'sku'     => $itemPayload['sku'],
+                    'name'    => $itemPayload['name'],
+                    'price'   => $itemPayload['price'],
+                    'quantity' => $itemPayload['quantity'],
+                ]);
+            }
 
             Log::info('Order berhasil dibuat', ['order_id' => $order->id]);
 
@@ -374,7 +385,6 @@ class ReservationController extends Controller
 
         return redirect()->route('thankyou', ['order' => $order->id]);
     }
-
 
     private function calculateAmountFromItems(array $items): int
     {
