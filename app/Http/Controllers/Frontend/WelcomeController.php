@@ -17,7 +17,7 @@ class WelcomeController extends Controller
 {
     public function index(Request $request)
     {
-        if (!$request->hasCookie('user_id')) {
+        if (!$request->hasCookie('cust_uid')) {
             $anonymousId = Str::uuid();
             Cookie::queue(cookie('cust_uid', Str::uuid(), 60 * 24 * 365, '/'));
         }
