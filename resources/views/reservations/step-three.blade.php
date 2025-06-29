@@ -64,6 +64,23 @@
                             </div>
                         @endif
 
+                        {{-- rekomendasi menu untuk user --}}
+                        @if (isset($namaMenuRekomendasi) && $namaMenuRekomendasi->isNotEmpty())
+                            <div role="alert"
+                                class="mb-6 px-4 py-3 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 rounded-lg">
+                                <div class="flex items-center">
+                                    <svg class="w-6 h-6 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"
+                                        xmlns="http://www.w3.org/2000/svg">
+                                        <path fill-rule="evenodd"
+                                            d="M18 10c0 4.418-3.582 8-8 8s-8-3.582-8-8 3.582-8 8-8 8 3.582 8 8zm-9-3a1 1 0 112 0v4a1 1 0 11-2 0V7zm1 8a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"
+                                            clip-rule="evenodd"></path>
+                                    </svg>
+                                    <p class="font-semibold">Rekomendasi Menu:</p>
+                                </div>
+                                <p class="mt-2">{{ $namaMenuRekomendasi->implode(', ') }}</p>
+                            </div>
+                        @endif
+
                         <form method="POST" action="{{ route('reservations.store.step-three') }}"
                             class="flex-1 flex flex-col">
                             @csrf

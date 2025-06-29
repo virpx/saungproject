@@ -10,6 +10,7 @@ use App\Models\Menu;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Category;
+use App\Models\DataRekomendasi;
 use App\Models\PaymentTransaction;
 use Carbon\Carbon;
 use App\Rules\DateBetween;
@@ -20,6 +21,8 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use App\Services\TripayPaymentService;
 use App\Services\TripayService;
+
+use function PHPUnit\Framework\isEmpty;
 
 class ReservationController extends Controller
 {
@@ -89,26 +92,50 @@ class ReservationController extends Controller
     // Step 3: Memilih Menu
     public function stepThree(Request $request)
     {
+        // ngambil cust_uid dari cookie
+        $cust_uid = $request->cookie("cust_uid");
+        // dd($cust_uid);
+
+        $menuId = DataRekomendasi::where("cust_uid", $cust_uid)
+            ->value("menu_id");
+        // dd($menuId);
+
+        if ($menuId) {
+            $ids = collect(explode(",", $menuId))
+                ->map(fn($v) => trim($v))
+                ->filter()
+                ->map(fn($v) => (int) $v)
+                ->all();
+
+            $namaMenuRekomendasi = Menu::whereIn('id', $ids)
+                ->pluck('name');
+
+            // dd($namaMenuRekomendasi);
+        } else {
+            $namaMenuRekomendasi = collect();
+            // dd($namaMenuRekomendasi);
+        }
+
         $reservation = $request->session()->get('reservation');
         if (!$reservation) {
-            return redirect()->route('reservations.step-one')->with('error', 'Please complete the reservation form first.');
+            return redirect()->route('reservations.step-one')
+                ->with('error', 'Please complete the reservation form first.');
         }
+
         $categories = Category::all();
-
         $menusQuery = Menu::query();
-        // $menus = Menu::all();
-
-        if ($request->has('search') && $request->search != '') {
+        if ($request->filled('search')) {
             $menusQuery->where('name', 'like', '%' . $request->search . '%');
         }
-
-        if ($request->has('category') && !empty($request->category)) {
+        if ($request->has('category')) {
             $menusQuery->whereIn('category_id', $request->category);
         }
-
         $menus = $menusQuery->get();
 
-        return view('reservations.step-three', compact('menus', 'reservation', 'categories'));
+        return view(
+            'reservations.step-three',
+            compact('menus', 'reservation', 'categories', 'namaMenuRekomendasi')
+        );
     }
 
     public function storeStepThree(Request $request)
