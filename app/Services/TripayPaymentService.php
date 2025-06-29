@@ -31,7 +31,6 @@ public function handleOrder(array $validated, array $cart, $cust_uid, Order $ord
         $tripay     = new TripayService();
         $subtotal   = 0;
         $orderItems = [];
-
         // 1) Bangun baris order_items dari cart
         foreach ($cart as $menuId => $item) {
             $menu = Menu::find($menuId);

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\DataRekomendasi;
+use App\Models\ItemSimilarity;
+use App\Models\LogCF;
 use App\Models\Menu;
 use App\Models\Order;
 use Illuminate\Http\Request;
@@ -66,10 +68,12 @@ class Rekomendasigenerator extends Controller
         // ];
         // $listmenu = [1,2,3];
         $similarity = [];
+        $similaritysimpan = [];
         for($i=1;$i<=count($listmenu);$i++){
             for($ii=$i+1;$ii<=count($listmenu);$ii++){
                 $nama = $i."dan".$ii;
                 $nama2 = $ii."dan".$i;
+                $datasimpan = $listmenu[$i-1]["name"]." dan ".$listmenu[$ii-1]["name"]." nilai = ";
                 $data1 = [];
                 foreach($listbelanja as $a){
                     array_push($data1,$a[$i]);
@@ -100,9 +104,17 @@ class Rekomendasigenerator extends Controller
                     $similarity[$nama] = $perhitunganatas/$perhitunganbawah;
                     $similarity[$nama2] = $perhitunganatas/$perhitunganbawah;
                 }
+                $datasimpan .= $similarity[$nama];
+                array_push($similaritysimpan,$datasimpan);
             }
         }
+        LogCF::create([
+            "cust_uid"=>"similarity",
+            "jenis"=>"similarity",
+            "hasil"=>json_encode($similaritysimpan)
+        ]);
         $prediksi = $listbelanja;
+        $prediksisimpan = [];
         $indexusercari = array_search($usercari, array_column($listbelanja, 0));
         for($i=1;$i<=count($listmenu);$i++){
             $perhitunganatas = 0;
@@ -124,7 +136,13 @@ class Rekomendasigenerator extends Controller
             }else{
                 $prediksi[$indexusercari][$i] = $perhitunganatas/$perhitunganbawah;
             }
+            array_push($prediksisimpan,$listmenu[$i-1]["name"]." bernilai ".$prediksi[$indexusercari][$i]);
         }
+        LogCF::create([
+            "cust_uid"=>$usercari,
+            "jenis"=>"prediction",
+            "hasil"=>json_encode($prediksisimpan)
+        ]);
         $hasil = [];
         for($i=1;$i<=count($listmenu);$i++){
             $arrpush = [];
