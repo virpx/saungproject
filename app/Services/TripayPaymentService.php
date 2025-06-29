@@ -27,6 +27,7 @@ class TripayPaymentService
 // TripayPaymentService.php
 public function handleOrder(array $validated, array $cart, $cust_uid, Order $order = null)
     {
+        // dd($cart);
         $tripay     = new TripayService();
         $subtotal   = 0;
         $orderItems = [];
@@ -84,6 +85,7 @@ public function handleOrder(array $validated, array $cart, $cust_uid, Order $ord
                     'phone'          => $validated['phone'],
                     'email'          => $validated['email'],
                     'table_id'       => $validated['table_id'],
+                    // 'total_price'    => 
                     'amount'         => $amount,
                     'tax'            => $tax,
                     'note'           => $validated['note'] ?? null,

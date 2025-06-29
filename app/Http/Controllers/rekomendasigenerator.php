@@ -13,6 +13,7 @@ class Rekomendasigenerator extends Controller
     {
         $generatedata = $this->hitung($usercari);
         if($generatedata != []){
+            DataRekomendasi::where('cust_uid',$usercari)->delete();
             DataRekomendasi::create([
                 "cust_uid"=>$usercari,
                 "menu_id"=>$generatedata[0]["idmenu"].",".$generatedata[1]["idmenu"].",".$generatedata[2]["idmenu"]
