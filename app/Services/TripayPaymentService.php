@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Http\Controllers\Rekomendasigenerator;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\PaymentTransaction;
@@ -95,7 +96,8 @@ public function handleOrder(array $validated, array $cart, $cust_uid, Order $ord
             foreach ($orderItems as $i) {
                 $order->orderItems()->create($i);
             }
-
+            $buatrekomendasi = new Rekomendasigenerator();
+            $buatrekomendasi->index($cust_uid);
             // c) prepare payload Tripay
             $merchantRef = 'order-' . $order->id;
             $signature   = $tripay->makeSignature($merchantRef, $amount);

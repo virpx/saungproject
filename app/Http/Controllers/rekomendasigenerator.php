@@ -7,7 +7,7 @@ use App\Models\Menu;
 use App\Models\Order;
 use Illuminate\Http\Request;
 
-class rekomendasigenerator extends Controller
+class Rekomendasigenerator extends Controller
 {
     public function index($usercari)
     {

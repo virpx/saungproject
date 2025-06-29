@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Frontend;
 
 use App\Http\Controllers\Controller;
+use App\Models\DataRekomendasi;
 use App\Models\Menu;
 use App\Models\Order;
 use App\Models\Category;
@@ -39,7 +40,7 @@ class MenuController extends Controller
     $cartSkus = array_keys($cart);
 
      // Dapatkan menu rekomendasi berdasarkan item similarity
-    $recommendedItems = $this->getRecommendedItems($cartSkus);
+    $recommendedItems = $this->getRecommendedItems($request->cookie('cust_uid'));
     // Mendapatkan keyword pencarian dari input
     $searchKeyword = $request->input('search'); 
 
@@ -252,66 +253,76 @@ class MenuController extends Controller
      * @param int $menuId
      * @return \Illuminate\Http\JsonResponse
      */    
-public function getRecommendedItems($cartSkus)
+public function getRecommendedItems($cust_uid)
 {
-    // Jika tidak ada item di keranjang, kembalikan koleksi kosong
-    if (empty($cartSkus)) {
-        return collect();
+    // // Jika tidak ada item di keranjang, kembalikan koleksi kosong
+    // if (empty($cartSkus)) {
+    //     return collect();
+    // }
+
+    // // Jika hanya ada satu item di keranjang, rekomendasikan berdasarkan popularitas
+    // if (count($cartSkus) == 1) {
+    //     return $this->getPopularItems();  // Fungsi untuk mengambil menu populer
+    // }
+
+    // // Tentukan jumlah pesanan minimum (3 kali lebih banyak dari pesanan item di keranjang)
+    // $minOrders = 3;
+
+    // // Ambil pasangan item yang mirip, mengecualikan 'TAX10'
+    // $similarPairs = DB::table('item_similarities')
+    //     ->whereIn('menu_id_1', $cartSkus)
+    //     ->orWhereIn('menu_id_2', $cartSkus)
+    //     ->whereNotIn('menu_id_1', ['TAX10'])
+    //     ->whereNotIn('menu_id_2', ['TAX10'])
+    //     ->orderBy('similarity_score', 'desc')
+    //     ->limit(10)
+    //     ->get();
+
+    // $similarSkus = [];
+    // foreach ($similarPairs as $pair) {
+    //     if (in_array($pair->menu_id_1, $cartSkus)) {
+    //         $similarSkus[] = $pair->menu_id_2;
+    //     }
+    //     if (in_array($pair->menu_id_2, $cartSkus)) {
+    //         $similarSkus[] = $pair->menu_id_1;
+    //     }
+    // }
+
+    // // Mengambil rekomendasi unik yang tidak ada di keranjang
+    // $uniqueRecommendedSkus = array_diff(array_unique($similarSkus), $cartSkus);
+
+    // // Jika ada rekomendasi yang valid
+    // if (!empty($uniqueRecommendedSkus)) {
+    //     $recommendedItems = Menu::whereIn('sku', $uniqueRecommendedSkus)
+    //         ->inRandomOrder()
+    //         ->limit(3)
+    //         ->get();
+
+    //     // Jika rekomendasi kurang dari 3, tambahkan menu lainnya secara acak
+    //     if ($recommendedItems->count() < 3) {
+    //         $additionalItems = Menu::whereNotIn('sku', $uniqueRecommendedSkus)
+    //             ->inRandomOrder()
+    //             ->limit(3 - $recommendedItems->count())
+    //             ->get();
+
+    //         $recommendedItems = $recommendedItems->merge($additionalItems);
+    //     }
+
+    //     return $recommendedItems;
+    // }
+
+    // // Jika tidak ada rekomendasi, kembalikan koleksi kosong
+    // return collect();
+    $rekomendasi = collect();
+    $db = DataRekomendasi::where('cust_uid',$cust_uid)->first();
+    if($db == null){
+        return $rekomendasi;
     }
-
-    // Jika hanya ada satu item di keranjang, rekomendasikan berdasarkan popularitas
-    if (count($cartSkus) == 1) {
-        return $this->getPopularItems();  // Fungsi untuk mengambil menu populer
+    foreach(explode(",",$db["menu_id"]) as $a){
+        $hasil = Menu::where('id',$a)->first();
+        $rekomendasi->push($hasil);
     }
-
-    // Tentukan jumlah pesanan minimum (3 kali lebih banyak dari pesanan item di keranjang)
-    $minOrders = 3;
-
-    // Ambil pasangan item yang mirip, mengecualikan 'TAX10'
-    $similarPairs = DB::table('item_similarities')
-        ->whereIn('menu_id_1', $cartSkus)
-        ->orWhereIn('menu_id_2', $cartSkus)
-        ->whereNotIn('menu_id_1', ['TAX10'])
-        ->whereNotIn('menu_id_2', ['TAX10'])
-        ->orderBy('similarity_score', 'desc')
-        ->limit(10)
-        ->get();
-
-    $similarSkus = [];
-    foreach ($similarPairs as $pair) {
-        if (in_array($pair->menu_id_1, $cartSkus)) {
-            $similarSkus[] = $pair->menu_id_2;
-        }
-        if (in_array($pair->menu_id_2, $cartSkus)) {
-            $similarSkus[] = $pair->menu_id_1;
-        }
-    }
-
-    // Mengambil rekomendasi unik yang tidak ada di keranjang
-    $uniqueRecommendedSkus = array_diff(array_unique($similarSkus), $cartSkus);
-
-    // Jika ada rekomendasi yang valid
-    if (!empty($uniqueRecommendedSkus)) {
-        $recommendedItems = Menu::whereIn('sku', $uniqueRecommendedSkus)
-            ->inRandomOrder()
-            ->limit(3)
-            ->get();
-
-        // Jika rekomendasi kurang dari 3, tambahkan menu lainnya secara acak
-        if ($recommendedItems->count() < 3) {
-            $additionalItems = Menu::whereNotIn('sku', $uniqueRecommendedSkus)
-                ->inRandomOrder()
-                ->limit(3 - $recommendedItems->count())
-                ->get();
-
-            $recommendedItems = $recommendedItems->merge($additionalItems);
-        }
-
-        return $recommendedItems;
-    }
-
-    // Jika tidak ada rekomendasi, kembalikan koleksi kosong
-    return collect();
+    return $rekomendasi;
 }
 
 // Fungsi untuk mendapatkan menu populer
