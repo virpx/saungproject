@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Frontend;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Blog;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\DB;
 use App\Models\Menu;
 use App\Helpers\RecommendationHelper;
@@ -12,8 +15,12 @@ use App\Models\OrderItem;
 
 class WelcomeController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        if (!$request->hasCookie('user_id')) {
+            $anonymousId = Str::uuid();
+            Cookie::queue(cookie('cust_uid', Str::uuid(), 60 * 24 * 365, '/'));
+        }
         $recommendations = [];
         if (auth()->check()) {
             $recommendations = RecommendationHelper::getRecommendations(auth()->id(), 20); // ambil lebih banyak dulu

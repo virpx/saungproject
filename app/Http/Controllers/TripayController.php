@@ -30,7 +30,7 @@ class TripayController extends Controller
         $service = new TripayPaymentService();
         try {
              // Proses pembayaran dan pemesanan
-            $result = $service->handleOrder($validated, $cart);
+            $result = $service->handleOrder($validated, $cart,$request->cookie('cust_uid'));
              // Simpan email pelanggan ke session
             session()->put('customer_email', $validated['email']);
             // Ambil order yang baru dibuat beserta item dan meja yang dipilih

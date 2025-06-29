@@ -24,7 +24,7 @@ class TripayPaymentService
 
    //code lama
 // TripayPaymentService.php
-public function handleOrder(array $validated, array $cart, Order $order = null)
+public function handleOrder(array $validated, array $cart, $cust_uid, Order $order = null)
     {
         $tripay     = new TripayService();
         $subtotal   = 0;
@@ -78,6 +78,7 @@ public function handleOrder(array $validated, array $cart, Order $order = null)
             // a) create/update Order
             if (! $order) {
                 $order = Order::create([
+                    'cust_uid'  => $cust_uid,
                     'customer_name'  => $validated['name'],
                     'phone'          => $validated['phone'],
                     'email'          => $validated['email'],

@@ -19,6 +19,7 @@ use App\Http\Controllers\Frontend\BlogController as FrontendBlogController;
 use App\Http\Controllers\Frontend\WelcomeController;
 use App\Http\Controllers\RecommendationController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\rekomendasigenerator;
 use App\Http\Controllers\TripayCallbackController;
 use App\Http\Controllers\TripayController;
 use App\Console\Commands\GenerateMenuSimilarity;
@@ -36,6 +37,7 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+Route::get('/cobagenerate', [rekomendasigenerator::class, 'index']);
 // ================= ADMIN LOGIN =================
 Route::get('/admin/login', [AdminController::class, 'showLoginForm'])->name('admin.login');
 Route::post('/admin/login', [AdminController::class, 'login'])->name('admin.login.submit');
