@@ -91,5 +91,8 @@
                 </div>
             </div>
         </div>
+        <div class="mt-4 px-6">
+            {{ $reservations->links() }}
+        </div>
     </div>
 </x-admin-layout>

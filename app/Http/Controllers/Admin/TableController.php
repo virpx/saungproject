@@ -14,7 +14,7 @@ class TableController extends Controller
      */
     public function index()
     {
-        $tables = Table::all();
+        $tables = Table::paginate(25);
         return view('admin.tables.index', compact('tables'));
     }
 
@@ -65,7 +65,6 @@ class TableController extends Controller
         $table->update($request->validated());
 
         return to_route('admin.tables.index')->with('success', 'Table updated successfully.');
-
     }
 
     /**
@@ -75,8 +74,7 @@ class TableController extends Controller
     {
         $table->reservations()->delete();
         $table->delete();
-        
-        return to_route('admin.tables.index')->with('success', 'Table updated successfully.');
 
+        return to_route('admin.tables.index')->with('success', 'Table updated successfully.');
     }
 }

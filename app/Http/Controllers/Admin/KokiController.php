@@ -17,7 +17,7 @@ class KokiController extends Controller
     public function index()
     {
         // Fetch all kokis or apply any filters you need
-        $kokis = Koki::all();
+        $kokis = Koki::paginate(25);
 
         // Return the view with the kokis data
         return view('admin.koki.index', compact('kokis'));

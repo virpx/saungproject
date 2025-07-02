@@ -24,7 +24,7 @@ class BlogController extends Controller
         return view('admin.blog.create');
     }
 
-        public function store(Request $request)
+    public function store(Request $request)
     {
         $rules = [
             'judul' => 'required',
@@ -70,7 +70,7 @@ class BlogController extends Controller
     }
 
 
-        public function update(Request $request, $id)
+    public function update(Request $request, $id)
     {
         // Find the blog post by ID
         $artikel = Blog::find($id);
@@ -112,7 +112,7 @@ class BlogController extends Controller
     }
 
 
-        public function destroy($id)
+    public function destroy($id)
     {
         // Find the blog post by ID
         $artikel = Blog::find($id);
@@ -134,6 +134,4 @@ class BlogController extends Controller
             return redirect(route('admin.blog.index'))->with('error', 'Data tidak ditemukan');
         }
     }
-        
-   
 }
