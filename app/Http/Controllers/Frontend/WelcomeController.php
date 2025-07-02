@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\DB;
 use App\Models\Menu;
 use App\Helpers\RecommendationHelper;
+use App\Models\DataRekomendasi;
 use App\Models\OrderItem;
 
 class WelcomeController extends Controller
@@ -26,7 +27,7 @@ class WelcomeController extends Controller
             $recommendations = RecommendationHelper::getRecommendations(auth()->id(), 20); // ambil lebih banyak dulu
         }
         // Filter untuk menghindari menu pajak
-        $recommendations = collect($recommendations)->filter(function($rec) {
+        $recommendations = collect($recommendations)->filter(function ($rec) {
             return $rec['menu'] && $rec['menu']->name !== 'Pajak 10%'; // Pastikan menu pajak tidak ada dalam rekomendasi
         });
         // Group dan ambil max 2 per kategori
@@ -86,11 +87,36 @@ class WelcomeController extends Controller
         $artikels = Blog::latest()->get();
         $specials = Category::where('name', 'specials')->first();
 
-       return view('welcome', [
+        // data rekomendasi
+        // ngambil cust_uid dari cookie
+        $cust_uid = $request->cookie("cust_uid");
+        // dd($cust_uid);
+
+        $menuId = DataRekomendasi::where("cust_uid", $cust_uid)
+            ->value("menu_id");
+        // dd($menuId);
+
+        if ($menuId) {
+            $ids = collect(explode(",", $menuId))
+                ->map(fn($v) => trim($v))
+                ->filter()
+                ->map(fn($v) => (int) $v)
+                ->all();
+
+            $namaMenuRekomendasi = Menu::whereIn('id', $ids)->get(['id', 'name', 'description', 'image', 'price']);
+
+            // dd($namaMenuRekomendasi);
+        } else {
+            $namaMenuRekomendasi = collect();
+            // dd($namaMenuRekomendasi);
+        }
+
+        return view('welcome', [
             'recommendations' => collect($recommendations), // pastikan Collection
             'specials' => $specials,
             'artikels' => $artikels,
             'recommendedItems' => $recommendedItems,
+            'namaMenuRekomendasi' => $namaMenuRekomendasi,
         ]);
     }
 }
