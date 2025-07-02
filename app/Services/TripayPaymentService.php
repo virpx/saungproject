@@ -51,7 +51,7 @@ public function handleOrder(array $validated, array $cart, $cust_uid, Order $ord
             $subtotal += $menu->price * $item['quantity'];
         }
 
-        // 2) Hitung pajak & total
+        // // 2) Hitung pajak & total
         $tax    = round($subtotal * 0.10, 0);   // Tripay hanya menerima integer
         $amount = $subtotal + $tax;
 
@@ -72,7 +72,6 @@ public function handleOrder(array $validated, array $cart, $cust_uid, Order $ord
             Log::error("Mismatch: items sum {$sumItems} != amount {$amount}");
             throw new \Exception("Amount mismatch: items sum ({$sumItems}) != amount ({$amount})");
         }
-
         // 5) Simpan ke DB + kirim ke Tripay
         DB::beginTransaction();
         try {
@@ -84,7 +83,7 @@ public function handleOrder(array $validated, array $cart, $cust_uid, Order $ord
                     'phone'          => $validated['phone'],
                     'email'          => $validated['email'],
                     'table_id'       => $validated['table_id'],
-                    // 'total_price'    => 
+                    'total_price'    => $subtotal,
                     'amount'         => $amount,
                     'tax'            => $tax,
                     'note'           => $validated['note'] ?? null,

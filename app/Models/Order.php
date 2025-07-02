@@ -20,7 +20,9 @@ class Order extends Model
         'payment_status',
         'qris_screenshot',
         'reservation_id',
-        'menu_items'
+        'menu_items',
+        'amount',
+        'tax'
     ];
 
     public function table()
