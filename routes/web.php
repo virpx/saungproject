@@ -93,6 +93,13 @@ Route::middleware('auth')->group(function () {
 
 Route::middleware(['auth', 'admin'])->name('admin.')->prefix('admin')->group(function () {
 
+    // Route untuk update rekomendasi
+    Route::post('/update-recommendations', function () {
+        // Jalankan perintah artisan untuk memperbarui rekomendasi
+        Artisan::call('recommendation:generate-similarity');
+        return back()->with('success', 'Rekomendasi menu telah diperbarui!');
+    })->name('update-recommendations');
+
     //  Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
     //  Route::get('/menus', [MenuController::class, 'index'])->name('menu.index');
     // Route::get('/statistik', [AdminController::class, 'statistik'])->name('statistik');
@@ -134,13 +141,6 @@ Route::middleware(['auth', 'admin'])->name('admin.')->prefix('admin')->group(fun
 
     //transactions
     Route::get('/transactions', [PaymentTransactionController::class, 'index'])->name('transactions.index');
-
-    // Route untuk update rekomendasi
-    Route::post('/admin/update-recommendations', function () {
-        // Jalankan perintah artisan
-        Artisan::call('recommendation:generate-similarity');
-        return back()->with('success', 'Rekomendasi menu telah diperbarui!');
-    })->name('admin.update-recommendations');
 });
 
 
