@@ -92,7 +92,6 @@ Route::middleware('auth')->group(function () {
 
 
 Route::middleware(['auth', 'admin'])->name('admin.')->prefix('admin')->group(function () {
-
     // Route untuk update rekomendasi
     Route::post('/update-recommendations', function () {
         // Jalankan perintah artisan untuk memperbarui rekomendasi
